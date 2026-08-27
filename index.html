@@ -531,7 +531,7 @@ select.inp{appearance:none;padding-right:38px;
       <h3>3 · สร้างและพิมพ์</h3>
       <div class="tools">
         <button class="btn go" onclick="buildStickers()">สร้างสติ๊กเกอร์</button>
-        <button class="btn pri" onclick="window.print()">พิมพ์</button>
+        <button class="btn pri" onclick="doPrint()">พิมพ์</button>
         <button class="btn" onclick="zoomBy(-.12)">ย่อ</button>
         <button class="btn" onclick="zoomBy(.12)">ขยาย</button>
         <button class="btn" onclick="fitZoom()">พอดีจอ</button>
@@ -555,7 +555,12 @@ select.inp{appearance:none;padding-right:38px;
         <input class="inp" id="setPin" placeholder="เว้นว่างถ้าไม่ได้ตั้ง"></div>
       <div class="tools">
         <button class="btn pri" onclick="saveSetup()">บันทึกการตั้งค่า</button>
+        <button class="btn" onclick="testConn()">ทดสอบการเชื่อมต่อ</button>
         <button class="btn" onclick="rebuildIndex()">สร้างดัชนีรูปภาพใหม่</button>
+      </div>
+      <div id="diag" class="note" style="margin-top:14px"></div>
+      <div class="tools" style="margin-top:6px">
+        <a class="btn" id="openExec" target="_blank" rel="noopener">เปิด URL นี้ในแท็บใหม่</a>
       </div>
       <div class="hr"></div>
       <p class="note">รูปครุภัณฑ์ดึงจากโฟลเดอร์ Google Drive ที่ผูกไว้ ถ้ารูปไม่ขึ้น
@@ -700,6 +705,31 @@ function saveSetup(){
   $('#inspector').value=S.by;
   toast('บันทึกการตั้งค่าแล้ว','good');
 }
+async function testConn(){
+  const d=$('#diag');
+  const url=$('#setUrl').value.trim();
+  $('#openExec').href=url;
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)){
+    d.innerHTML='<b style="color:var(--bad)">รูปแบบ URL ไม่ถูกต้อง</b><br>'+
+      'ต้องเป็น https://script.google.com/macros/s/…/exec — ระวังอย่าใช้ URL ที่ลงท้าย /dev '+
+      'หรือ URL หน้าตัวแก้ไข Apps Script';
+    return;
+  }
+  d.innerHTML='กำลังทดสอบ…';
+  const keep=S.api; S.api=url;
+  try{
+    const r=await jsonp({action:'ping'});
+    d.innerHTML='<b style="color:var(--ok)">เชื่อมต่อสำเร็จ</b><br>เซิร์ฟเวอร์ตอบกลับเมื่อ '+
+      new Date(r.time).toLocaleString('th-TH')+' — กดบันทึกการตั้งค่า แล้วกลับไปหน้าภาพรวม';
+  }catch(e){
+    S.api=keep;
+    d.innerHTML='<b style="color:var(--bad)">เชื่อมต่อไม่ได้: '+esc(e.message)+'</b><br>'+
+      'ตรวจตามลำดับนี้<br>'+
+      '1. กด “เปิด URL นี้ในแท็บใหม่” ถ้าเจอหน้าให้ล็อกอิน Google แปลว่าสิทธิ์การเข้าถึงยังไม่เป็น Anyone<br>'+
+      '2. ถ้าเจอข้อความ “ไม่รู้จักคำสั่ง” แปลว่าหลังบ้านทำงานปกติ ให้ตรวจว่าคัดลอก URL มาครบไม่ขาดตัวอักษร<br>'+
+      '3. หลังแก้ Code.gs ทุกครั้งต้อง Deploy > Manage deployments > แก้ไข > Version: New version > Deploy';
+  }
+}
 async function rebuildIndex(){
   try{ const d=await api('rebuildIndex'); toast('ทำดัชนีรูปภาพแล้ว '+d.count+' ไฟล์','good'); }
   catch(e){ toast(e.message,'bad'); }
@@ -709,6 +739,7 @@ async function boot(){
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
   $('#inspector').value=S.by;
+  $('#openExec').href=S.api||'#';
   if(!S.api){ showConn('ยังไม่ได้ระบุ URL ของ Web App กรุณาไปที่หน้าตั้งค่า'); return; }
   try{
     apply(await jsonp({action:'bootstrap',month:S.month||''}));
@@ -1432,6 +1463,14 @@ function updatePickCount(){
       ` → พิมพ์ ${total} ดวง บนกระดาษ ${Math.ceil(total/per)} แผ่น (แผ่นละ ${per} ดวง)`
     : 'ยังไม่ได้เลือก — กดปุ่มเลือกทั้งหมด หรือแตะที่รูปด้านล่างทีละชิ้น';
 }
+function doPrint(){
+  const pr=$('#printRoot');
+  if(!pr.querySelector('.sheetbox'))
+    return toast('กด “สร้างสติ๊กเกอร์” ก่อน แล้วจึงสั่งพิมพ์','bad');
+  const blank=$('#previewWrap').querySelector('.qr canvas');
+  if(blank) return toast('QR ยังสร้างไม่เสร็จ รออีกสักครู่แล้วกดพิมพ์ใหม่','bad');
+  window.print();
+}
 function fillSheet(){
   const n=S.sel.size;
   if(!n) return toast('เลือกครุภัณฑ์ก่อน แล้วจึงกดเติมให้เต็มแผ่น','bad');
@@ -1564,14 +1603,30 @@ function buildStickers(){
   const wrap=$('#previewWrap');
   wrap.innerHTML=''; wrap.appendChild(frag);
 
+  /* แปลง QR จาก canvas เป็นรูปภาพ เพื่อให้คัดลอกไปหน้าพิมพ์ได้ครบ */
+  const flatten=()=>{
+    Array.from(wrap.querySelectorAll('.qr')).forEach(box=>{
+      const cv=box.querySelector('canvas');
+      if(!cv) return;
+      let url='';
+      try{ url=cv.toDataURL('image/png'); }catch(e){ return; }
+      const im=document.createElement('img');
+      im.src=url; im.alt='';
+      im.style.width='100%'; im.style.height='100%'; im.style.display='block';
+      box.innerHTML=''; box.appendChild(im);
+    });
+  };
   const finish=()=>{
-    const cl=wrap.cloneNode(true);
-    cl.removeAttribute('id'); cl.className='';
-    cl.style.transform='none'; cl.style.width='auto';
-    $('#printRoot').innerHTML=''; $('#printRoot').appendChild(cl);
-    applyZoom();
-    toast('สร้างสติ๊กเกอร์ '+chosen.length+' ดวง · '+pages+' แผ่น (แผ่นละ '+per+' ดวง)'+
-      (copies>1?' · ซ้ำชิ้นละ '+copies+' ดวง':''),'good');
+    flatten();
+    setTimeout(()=>{
+      const cl=wrap.cloneNode(true);
+      cl.removeAttribute('id'); cl.className='';
+      cl.style.transform='none'; cl.style.width='auto';
+      $('#printRoot').innerHTML=''; $('#printRoot').appendChild(cl);
+      applyZoom();
+      toast('สร้างสติ๊กเกอร์ '+chosen.length+' ดวง · '+pages+' แผ่น (แผ่นละ '+per+' ดวง)'+
+        (copies>1?' · ซ้ำชิ้นละ '+copies+' ดวง':'')+' — พร้อมพิมพ์','good');
+    },80);
   };
   if(!jobs.length) return finish();
 
