@@ -640,7 +640,7 @@ select.inp{appearance:none;padding-right:38px;
     </div>
     <div class="chips" style="margin-bottom:16px">
       <button class="chip on" data-ln="out">กำลังยืม</button>
-      <button class="chip" data-ln="over">เลยกำหนดคืน</button>
+      <button class="chip" data-ln="over">ต้องติดตาม</button>
       <button class="chip" data-ln="all">ทั้งหมด</button>
     </div>
     <div class="rows" id="loanList"></div>
@@ -1289,17 +1289,19 @@ function renderDash(){
 
   /* ครุภัณฑ์ที่ถูกยืมอยู่ */
   const outLoans=S.loans.filter(l=>l.state!=='คืนแล้ว');
-  const overLoans=outLoans.filter(isOver);
+  const overLoans=outLoans.filter(l=>isOver(l)||needFollow(l));
   $('#openLoan').innerHTML= outLoans.length
     ? outLoans.slice(0,6).map(l=>`<div class="stat">
         <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           ${esc(l.name)}<br><span style="color:var(--dim2);font-size:13px">${esc(l.who)}</span></span>
-        <span class="tag ${isOver(l)?'t-bad':'t-warn'}">${
-          isOver(l)?'เกิน '+daysOver(l)+' วัน':esc(l.due||'—')}</span></div>`).join('')
+        <span class="tag ${isOver(l)||needFollow(l)?'t-bad':'t-warn'}">${
+          isOver(l)?'เกิน '+daysOver(l)+' วัน'
+          :needFollow(l)?daysOut(l)+' วัน'
+          :esc(l.due||'ไม่ระบุ')}</span></div>`).join('')
       + (outLoans.length>6?`<div class="note" style="margin-top:8px">และอีก ${
           outLoans.length-6} รายการ</div>`:'')
       + (overLoans.length?`<div class="note" style="margin-top:10px;color:var(--bad)">
-          เลยกำหนดคืน ${overLoans.length} รายการ</div>`:'')
+          ต้องติดตาม ${overLoans.length} รายการ</div>`:'')
     : '<div class="note">ไม่มีครุภัณฑ์ที่ถูกยืมอยู่</div>';
 
   /* งานซ่อมค้าง */
@@ -2148,6 +2150,11 @@ function isOver(l){ return l.state!=='คืนแล้ว' && l.due && l.due <
 function daysOver(l){
   return Math.floor((new Date(today10())-new Date(l.due))/86400000);
 }
+/* ยืมนานโดยไม่ได้กำหนดวันคืน ให้ถือว่าต้องติดตาม */
+function daysOut(l){
+  return l.out ? Math.floor((new Date(today10())-new Date(l.out))/86400000) : 0;
+}
+function needFollow(l){ return l.state!=='คืนแล้ว' && !l.due && daysOut(l)>30; }
 
 $$('[data-ln]').forEach(b=>b.onclick=()=>{
   $$('[data-ln]').forEach(x=>x.classList.remove('on'));
@@ -2158,13 +2165,13 @@ $('#lnQ').addEventListener('input',renderLoan);
 function renderLoan(){
   const q=$('#lnQ').value.trim().toLowerCase();
   const out=S.loans.filter(l=>l.state!=='คืนแล้ว');
-  const over=out.filter(isOver);
-  let list = S.lnTab==='over' ? over
+  const over=out.filter(l=>isOver(l)||needFollow(l));
+  let list = S.lnTab==='over' ? out.filter(l=>isOver(l)||needFollow(l))
            : S.lnTab==='all'  ? S.loans.slice().reverse() : out;
   if(q) list=list.filter(l=>[l.name,l.code,l.who,l.place].join(' ').toLowerCase().includes(q));
 
   $('#loanSub').innerHTML=`กำลังยืมอยู่ <b style="color:var(--plum)">${out.length}</b> รายการ`+
-    (over.length?` · <b style="color:var(--bad)">เลยกำหนดคืน ${over.length} รายการ</b>`:'')+
+    (over.length?` · <b style="color:var(--bad)">ต้องติดตาม ${over.length} รายการ</b>`:'')+
     ' · บันทึกการยืมออกและติดตามจนได้รับคืน';
 
   $('#loanList').innerHTML = list.length ? list.slice(0,80).map(l=>{
@@ -2176,10 +2183,11 @@ function renderLoan(){
         :`<div class="thumb"></div>`}
       <div class="mid"><b>${esc(l.name)}</b>
         <span>${esc(l.code)} · ผู้ยืม ${esc(l.who)}${l.place?' · '+esc(l.place):''}
-        ${l.due?' · กำหนดคืน '+esc(l.due):''}</span></div>
+        ${l.due?' · กำหนดคืน '+esc(l.due):' · ไม่ระบุกำหนดคืน'}</span></div>
       ${l.state==='คืนแล้ว'
         ? `<span class="tag t-ok">คืนแล้ว</span>`
         : ov ? `<span class="tag t-bad">เกิน ${daysOver(l)} วัน</span>`
+        : needFollow(l) ? `<span class="tag t-bad">ยืมมา ${daysOut(l)} วัน</span>`
              : `<span class="tag t-warn">กำลังยืม</span>`}</button>`;
   }).join('')
    : `<div class="empty"><b>${S.lnTab==='over'?'ไม่มีรายการเลยกำหนดคืน':'ไม่มีรายการยืม'}</b>
@@ -2230,12 +2238,21 @@ function openLoanForm(k){
         <input class="inp" id="lnPlace" placeholder="เช่น ห้องผ่าตัด, หอผู้ป่วยชั้น 9"></div>
       <div class="field"><label>เบอร์ติดต่อ</label>
         <input class="inp" id="lnTel" inputmode="tel" placeholder="เบอร์ภายในหรือมือถือ"></div>
-      <div class="seg" style="margin-bottom:16px">
-        <div class="field" style="flex:1;margin:0"><label>วันที่ยืม</label>
-          <input class="inp" type="date" id="lnOut" value="${today10()}"></div>
-        <div class="field" style="flex:1;margin:0"><label>กำหนดคืน</label>
-          <input class="inp" type="date" id="lnDue" value="${due}"></div>
-      </div>
+      <div class="field"><label>วันที่ยืม</label>
+        <input class="inp" type="date" id="lnOut" value="${today10()}"></div>
+
+      <div class="field"><label>กำหนดคืน</label>
+        <div class="chips" id="dueChips" style="margin-bottom:9px">
+          <button type="button" class="chip" data-d="1">พรุ่งนี้</button>
+          <button type="button" class="chip" data-d="3">3 วัน</button>
+          <button type="button" class="chip on" data-d="7">7 วัน</button>
+          <button type="button" class="chip" data-d="30">30 วัน</button>
+          <button type="button" class="chip" data-d="">ยังไม่ระบุ</button>
+        </div>
+        <input class="inp" type="date" id="lnDue" value="${due}">
+        <div class="note" id="dueNote" style="margin-top:6px">
+          ถ้ายังไม่รู้ว่าจะคืนวันไหน กดปุ่ม “ยังไม่ระบุ” ได้
+          ระบบจะเตือนให้เองเมื่อยืมเกิน 30 วัน</div></div>
       <div class="field"><label>เหตุผลการยืม</label>
         <textarea id="lnWhy" placeholder="เช่น ใช้กับผู้ป่วยที่ย้ายไปห้องผ่าตัด"></textarea></div>
       <div class="field"><label>ผู้ให้ยืม</label>
@@ -2244,7 +2261,30 @@ function openLoanForm(k){
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitLoan('${esc(k)}')">บันทึกการยืม</button>
     </div>`;
+  bindDueChips();
   $('#scrim').classList.add('on');
+}
+
+/* ปุ่มลัดตั้งกำหนดคืน แก้ปัญหาช่องวันที่บนมือถือที่ล้างค่าเองไม่ได้ */
+function bindDueChips(){
+  $$('#dueChips .chip').forEach(b=>b.onclick=()=>{
+    $$('#dueChips .chip').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    const d=b.dataset.d, inp=$('#lnDue');
+    if(d===''){
+      inp.value=''; inp.disabled=true; inp.style.opacity=.4;
+      $('#dueNote').innerHTML='<b style="color:var(--warn)">ยังไม่ระบุกำหนดคืน</b>'+
+        ' — ระบบจะเตือนให้ติดตามเมื่อยืมเกิน 30 วัน';
+    }else{
+      const t=new Date(); t.setDate(t.getDate()+ +d);
+      inp.disabled=false; inp.style.opacity=1;
+      inp.value=t.toISOString().slice(0,10);
+      $('#dueNote').textContent='กำหนดคืนภายใน '+d+' วัน แก้วันที่เองได้ที่ช่องด้านบน';
+    }
+  });
+  $('#lnDue').addEventListener('input',()=>{
+    $$('#dueChips .chip').forEach(x=>x.classList.remove('on'));
+  });
 }
 async function submitLoan(k){
   const i=findItem(k); if(!i) return;
@@ -2254,7 +2294,7 @@ async function submitLoan(k){
   try{
     const d=await api('saveLoan',{cat:i.cat,row:i.row,code:i.code,name:i.name,who,
       place:$('#lnPlace').value.trim(), tel:$('#lnTel').value.trim(),
-      out:$('#lnOut').value, due:$('#lnDue').value,
+      out:$('#lnOut').value, due:($('#lnDue').disabled?'':$('#lnDue').value),
       why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim()});
     S.loans=d.loans||S.loans;
     i.status='ถูกยืม';
@@ -2278,8 +2318,9 @@ function openLoanDetail(row){
         <dt>ผู้ยืม</dt><dd>${esc(l.who)}${l.tel?' · โทร '+esc(l.tel):''}</dd>
         <dt>นำไปที่</dt><dd>${esc(l.place||'—')}</dd>
         <dt>วันที่ยืม</dt><dd>${esc(l.out||'—')}</dd>
-        <dt>กำหนดคืน</dt><dd>${esc(l.due||'—')}
-          ${ov?`<span class="tag t-bad" style="margin-left:6px">เกิน ${daysOver(l)} วัน</span>`:''}</dd>
+        <dt>กำหนดคืน</dt><dd>${l.due?esc(l.due):'<span style="color:var(--warn)">ยังไม่ระบุ</span>'}
+          ${ov?`<span class="tag t-bad" style="margin-left:6px">เกิน ${daysOver(l)} วัน</span>`
+             :needFollow(l)?`<span class="tag t-bad" style="margin-left:6px">ยืมมาแล้ว ${daysOut(l)} วัน</span>`:''}</dd>
         ${l.why?`<dt>เหตุผล</dt><dd>${esc(l.why)}</dd>`:''}
         <dt>ผู้ให้ยืม</dt><dd>${esc(l.by||'—')}</dd>
         <dt>สถานะ</dt><dd><span class="tag ${closed?'t-ok':ov?'t-bad':'t-warn'}">${esc(l.state)}</span></dd>
