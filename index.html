@@ -477,7 +477,7 @@ select.inp{appearance:none;padding-right:38px;
       <div class="stat"><span>ตรวจแล้วเดือนนี้</span><b id="ckDone">0 / 0</b></div>
       <div class="meter"><i id="ckMeter" style="width:0%"></i></div>
       <div class="field" style="margin:16px 0 0"><label>ผู้ตรวจ</label>
-        <input class="inp" id="inspector" placeholder="ชื่อ-สกุลผู้ตรวจ" style="max-width:320px"></div>
+        <select class="inp" id="inspector" style="max-width:360px"></select></div>
     </div>
     <div class="chips" style="margin-bottom:16px">
       <button class="chip on" data-ck="todo">ค้างตรวจ</button>
@@ -607,7 +607,7 @@ const S = {
   base: store.get('kp.base') || (location.origin + location.pathname),
   by: store.get('kp.by') || '',
   pin: store.get('kp.pin') || '',
-  items:[], checks:[], fixes:[], month:'',
+  items:[], checks:[], fixes:[], staff:[], month:'',
   filter:'all', ckTab:'todo', fxTab:'open', shown:24, pickShown:36,
   sel:new Set(), layout:24, zoom:.6
 };
@@ -754,7 +754,7 @@ async function rebuildIndex(){
 async function boot(){
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
-  $('#inspector').value=S.by;
+  $('#inspector').innerHTML=staffOptions(S.by);
   $('#openExec').href=S.api||'#';
   if(!S.api){ showConn('ยังไม่ได้ระบุ URL ของ Web App กรุณาไปที่หน้าตั้งค่า'); return; }
 
@@ -796,13 +796,14 @@ async function reload(){
 }
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
+  S.staff=d.staff||S.staff;
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
   fillSelect('#fOwner',d.owners,'ทุกผู้รับผิดชอบ');
   fillSelect('#sOwner',d.owners,'ทุกผู้รับผิดชอบ');
   fillLookup(); buildMonths();
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
-  $('#inspector').value=$('#inspector').value||S.by;
+  $('#inspector').innerHTML=staffOptions(S.by);
   renderAll();
 }
 function fillSelect(sel,list,first){
@@ -1063,6 +1064,13 @@ function openItem(k){
 }
 
 /* ═════════ แก้ไขข้อมูล + อัปโหลดรูป ═════════ */
+/* รายชื่อบุคลากรสำหรับ dropdown — ถ้าชื่อที่บันทึกไว้ไม่อยู่ในชีต จะเติมให้อัตโนมัติ */
+function staffOptions(cur){
+  const list=S.staff.slice();
+  if(cur && list.indexOf(cur)===-1) list.unshift(cur);
+  return `<option value="">— เลือกรายชื่อ —</option>`+
+    list.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
+}
 function ownerList(){
   const o={}; S.items.forEach(i=>{ if(i.owner) o[i.owner]=1; });
   return Object.keys(o).sort((a,b)=>a.localeCompare(b,'th'));
@@ -1106,10 +1114,8 @@ function openEdit(k){
       <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
         <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd></dl>
 
-      <div class="field"><label>ผู้รับผิดชอบ (พิมพ์ชื่อใหม่ได้ หรือเลือกจากรายชื่อเดิม)</label>
-        <input class="inp" id="edOwner" list="ownerOpts" value="${esc(i.owner||'')}"
-               placeholder="เช่น นางสาวจันจิรา ศรีตะ">
-        <datalist id="ownerOpts">${ownerList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+      <div class="field"><label>ผู้รับผิดชอบ</label>
+        <select class="inp" id="edOwner">${staffOptions(i.owner||'')}</select></div>
 
       <div class="field"><label>สถานะ</label>
         <select class="inp" id="edStatus">${sts.map(v=>
@@ -1153,7 +1159,7 @@ function openEdit(k){
 async function submitEdit(k){
   const i=findItem(k); if(!i) return;
   const owner=$('#edOwner').value.trim();
-  if(!owner) return toast('กรุณาระบุผู้รับผิดชอบ','bad');
+  if(!owner) return toast('กรุณาเลือกผู้รับผิดชอบ','bad');
   try{
     await api('updateItem',{cat:i.cat,row:i.row,owner,
       status:$('#edStatus').value,loc:$('#edLoc').value.trim(),note:$('#edNote').value.trim()});
@@ -1199,8 +1205,7 @@ function openBulkOwner(){
         <b style="color:var(--plum);font-size:19px">${list.length}</b> รายการ
         ที่แสดงอยู่ในหน้าทะเบียนตอนนี้ ถ้ายังไม่ใช่ชุดที่ต้องการ ให้ปิดหน้านี้แล้วกรองใหม่ก่อน</div>
       <div class="field"><label>ผู้รับผิดชอบคนใหม่</label>
-        <input class="inp" id="bkOwner" list="ownerOpts2" placeholder="พิมพ์ชื่อใหม่ หรือเลือกจากรายชื่อเดิม">
-        <datalist id="ownerOpts2">${ownerList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+        <select class="inp" id="bkOwner">${staffOptions('')}</select></div>
       <div class="rows" style="max-height:220px;overflow:auto;margin-bottom:18px">
         ${list.slice(0,40).map(i=>`<div class="row" style="cursor:default">
           <div class="mid"><b>${esc(i.name)}</b><span>${esc(i.code)} · เดิม ${esc(i.owner||'—')}</span></div>
@@ -1213,7 +1218,7 @@ function openBulkOwner(){
 }
 async function submitBulkOwner(){
   const owner=$('#bkOwner').value.trim();
-  if(!owner) return toast('กรุณาระบุชื่อผู้รับผิดชอบคนใหม่','bad');
+  if(!owner) return toast('กรุณาเลือกชื่อผู้รับผิดชอบคนใหม่','bad');
   const list=matchList();
   if(!list.length) return toast('ไม่มีรายการที่จะเปลี่ยน','bad');
   try{
@@ -1247,7 +1252,7 @@ function openCheck(k){
       <div class="field"><label>สภาพ / หมายเหตุ</label>
         <textarea id="ckNote" placeholder="ระบุสิ่งที่พบ เช่น สายไฟชำรุด แบตเตอรี่เสื่อม"></textarea></div>
       <div class="field"><label>ผู้ตรวจ</label>
-        <input class="inp" id="ckBy" value="${esc($('#inspector').value||S.by)}"></div>
+        <select class="inp" id="ckBy">${staffOptions($('#inspector').value||S.by)}</select></div>
       <button class="btn go" style="width:100%;justify-content:center;padding:15px"
         onclick="submitCheck()">บันทึกผลการตรวจ</button>
     </div>`;
@@ -1260,8 +1265,9 @@ function openCheck(k){
 async function submitCheck(){
   const i=findItem(ckState.k); if(!i) return;
   const by=$('#ckBy').value.trim();
-  if(!by) return toast('กรุณาระบุชื่อผู้ตรวจ','bad');
-  S.by=by; store.set('kp.by',by); $('#inspector').value=by;
+  if(!by) return toast('กรุณาเลือกชื่อผู้ตรวจ','bad');
+  S.by=by; store.set('kp.by',by);
+  $('#inspector').innerHTML=staffOptions(by);
   const payload=[{cat:i.cat,row:i.row,code:i.code,ref:i.ref,name:i.name,
     result:ckState.result,note:$('#ckNote').value.trim(),loc:$('#ckLoc').value.trim()}];
   try{
@@ -1278,7 +1284,10 @@ $$('[data-ck]').forEach(b=>b.onclick=()=>{
   $$('[data-ck]').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); S.ckTab=b.dataset.ck; renderCheck();
 });
-$('#inspector').addEventListener('change',e=>{S.by=e.target.value.trim();store.set('kp.by',S.by);});
+$('#inspector').addEventListener('change',e=>{
+  S.by=e.target.value.trim(); store.set('kp.by',S.by);
+  if(S.by) toast('ผู้ตรวจ: '+S.by,'good');
+});
 function renderCheck(){
   const cm=checkMap(), live=S.items.filter(ALIVE);
   const done=live.filter(i=>cm[key(i)]), todo=live.filter(i=>!cm[key(i)]);
@@ -1380,7 +1389,8 @@ function openFixForm(k){
       <div class="field"><label>ส่งซ่อมที่</label>
         <input class="inp" id="fxTo" placeholder="เช่น งานเครื่องมือแพทย์"></div>
       <div class="field"><label>เลขที่ใบส่งซ่อม</label><input class="inp" id="fxDoc"></div>
-      <div class="field"><label>ผู้แจ้ง</label><input class="inp" id="fxBy" value="${esc(S.by)}"></div>
+      <div class="field"><label>ผู้แจ้ง</label>
+        <select class="inp" id="fxBy">${staffOptions(S.by)}</select></div>
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitFix('${esc(k)}')">บันทึกการส่งซ่อม</button>
     </div>`;
