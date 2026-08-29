@@ -447,6 +447,8 @@ select.inp{appearance:none;padding-right:38px;
         <input class="inp" id="q" placeholder="ค้นชื่อ เลขครุภัณฑ์ ผู้รับผิดชอบ จุดวาง"></label>
       <select class="inp" id="fCat"><option value="">ทุกประเภท</option>
         <option value="med">ทางการแพทย์</option><option value="off">สำนักงาน</option></select>
+      <select class="inp" id="fGrp"><option value="">ทุกกลุ่มผู้รับผิดชอบ</option>
+        <option value="nurse">ของพยาบาล</option><option value="pn">ของ PN / Aid Worker</option></select>
       <select class="inp" id="fStatus"><option value="">ทุกสถานะ</option></select>
       <select class="inp" id="fOwner"><option value="">ทุกผู้รับผิดชอบ</option></select>
     </div>
@@ -679,6 +681,13 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>
 const key = it => it.cat + '|' + it.code;
 const thMonth = mk => { const [y,m]=mk.split('-'); return TH_MONTH[+m-1] + ' ' + (+y+543); };
 const imgUrl = (id,w) => id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w'+(w||320) : '';
+const baht = v => (Number(v)||0).toLocaleString('th-TH',
+  {minimumFractionDigits:2,maximumFractionDigits:2});
+const bahtShort = v => {
+  const n=Number(v)||0;
+  if(n>=1e6) return (n/1e6).toFixed(2).replace(/\.00$/,'')+' ล้าน';
+  return n.toLocaleString('th-TH',{maximumFractionDigits:0});
+};
 function toast(msg,kind){
   const t=$('#toast'); t.textContent=msg; t.className='on '+(kind||'');
   clearTimeout(t._t); t._t=setTimeout(()=>t.className='',3200);
@@ -864,9 +873,13 @@ function renderKpis(){
     const all=S.items.filter(i=>!cat||i.cat===cat);
     const live=all.filter(ALIVE);
     const done=live.filter(i=>cm[key(i)]).length;
+    const val=live.reduce((a,i)=>a+(Number(i.price)||0),0);
+    const noPrice=live.filter(i=>!Number(i.price)).length;
     return `<button class="kpi" data-cat="${cat}">
       <div class="n">${all.length}</div><div class="l">${label}</div>
-      <div class="s">ใช้งาน ${live.length} · ตรวจแล้ว ${done}</div></button>`;
+      <div class="s">ใช้งาน ${live.length} · ตรวจแล้ว ${done}</div>
+      <div class="s" style="color:var(--plum);font-weight:600">มูลค่า ${bahtShort(val)} บาท${
+        noPrice?` · ยังไม่ลงราคา ${noPrice}`:''}</div></button>`;
   };
   $('#kpis').innerHTML = box('','ครุภัณฑ์ทั้งหมด')
     + box('med','ครุภัณฑ์ทางการแพทย์') + box('off','ครุภัณฑ์สำนักงาน');
@@ -915,6 +928,7 @@ function renderLookup(){
       <div><b style="color:var(--bad)">${live.length-done}</b><span>ค้างตรวจ</span></div>
       <div><b style="color:var(--warn)">${bad}</b><span>ชำรุด/ไม่พบ</span></div>
       <div><b style="color:var(--dim)">${off}</b><span>แทงจำหน่าย</span></div>
+      <div><b>${bahtShort(live.reduce((a,i)=>a+(Number(i.price)||0),0))}</b><span>มูลค่ารวม (บาท)</span></div>
     </div>
     <div class="rows">${list.slice(0,30).map(i=>{
       const c=cm[key(i)], u=imgUrl(i.img);
@@ -1005,16 +1019,18 @@ $$('[data-f]').forEach(b=>b.onclick=()=>{
   $$('[data-f]').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); S.filter=b.dataset.f; S.shown=24; renderStock();
 });
-['#q','#fCat','#fStatus','#fOwner'].forEach(s=>
+['#q','#fCat','#fGrp','#fStatus','#fOwner'].forEach(s=>
   $(s).addEventListener('input',()=>{S.shown=24;renderStock();}));
 $('#more').onclick=()=>{S.shown+=36;renderStock();};
 
 function matchList(){
   const q=$('#q').value.trim().toLowerCase();
   const c=$('#fCat').value, st=$('#fStatus').value, ow=$('#fOwner').value;
+  const gr=$('#fGrp').value;
   const cm=checkMap(), of=openFixMap();
   return S.items.filter(i=>{
     if(c&&i.cat!==c) return false;
+    if(gr&&(i.grp||(i.cat==='off'?'pn':'nurse'))!==gr) return false;
     if(st&&i.status!==st) return false;
     if(ow&&i.owner!==ow) return false;
     if(S.filter==='todo'&&(!ALIVE(i)||cm[key(i)])) return false;
@@ -1045,7 +1061,9 @@ function card(i,chk){
       <div class="mk">${mk}</div></div>
     <div class="bd"><div class="nm">${esc(i.name)}</div>
       <div class="cd">${esc(i.code)}</div>
-      <div class="ow">${esc(i.owner||'—')}${i.loc?' · '+esc(i.loc):''}</div></div></button>`;
+      <div class="ow">${esc(i.owner||'—')}${i.loc?' · '+esc(i.loc):''}</div>
+      ${i.price?`<div class="cd" style="color:var(--dim)">${baht(i.price)} บาท</div>`:''}
+      </div></button>`;
 }
 
 /* ═════════ รายละเอียด ═════════ */
@@ -1061,9 +1079,13 @@ function openItem(k){
       ${i.img?`<img class="shot" src="${imgUrl(i.img,900)}" alt="" onerror="this.remove()">`:''}
       <dl class="kv">
         <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd>
-        <dt>ประเภท</dt><dd>${i.cat==='med'?'ครุภัณฑ์ทางการแพทย์':'ครุภัณฑ์สำนักงาน'}</dd>
+        <dt>ประเภท</dt><dd>${i.cat==='med'?'ครุภัณฑ์ทางการแพทย์':'ครุภัณฑ์สำนักงาน'}
+          <span class="tag ${i.grp==='pn'?'t-warn':'t-fix'}" style="margin-left:6px">${
+            i.grp==='pn'?'PN / Aid Worker':'พยาบาล'}</span></dd>
         <dt>ผู้รับผิดชอบ</dt><dd>${esc(i.owner||'—')}</dd>
         <dt>จุดวาง</dt><dd>${esc(i.loc||'—')}</dd>
+        <dt>ราคา</dt><dd>${i.price?baht(i.price)+' บาท'
+          :'<span style="color:var(--dim2)">ยังไม่ได้บันทึก</span>'}</dd>
         <dt>สถานะ</dt><dd><span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></dd>
         <dt>ใบคุม</dt><dd>${doc?`<a href="${doc}" target="_blank" rel="noopener">เปิดใบคุม</a>`:'ไม่มีไฟล์'}</dd>
         <dt>ตรวจเดือนนี้</dt><dd>${chk
@@ -1088,9 +1110,9 @@ function openItem(k){
 
 /* ═════════ แก้ไขข้อมูล + อัปโหลดรูป ═════════ */
 /* รายชื่อบุคลากรสำหรับ dropdown — ถ้าชื่อที่บันทึกไว้ไม่อยู่ในชีต จะเติมให้อัตโนมัติ */
-function staffOptions(cur,cat){
+function staffOptions(cur,grp){
   let list=S.staff.slice();
-  const want = cat==='med' ? 'พยาบาล' : cat==='off' ? 'PN' : '';
+  const want = grp==='nurse' ? 'พยาบาล' : grp==='pn' ? 'PN' : '';
   if(want && Object.keys(S.roles||{}).length){
     const f=list.filter(n=>String(S.roles[n]||'').indexOf(want)===0);
     if(f.length) list=f;
@@ -1143,10 +1165,11 @@ function openEdit(k){
         <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd></dl>
 
       <div class="field"><label>ผู้รับผิดชอบ</label>
-        <select class="inp" id="edOwner">${staffOptions(i.owner||'',i.cat)}</select>
-        <div class="note" style="margin-top:6px">${i.cat==='med'
+        <select class="inp" id="edOwner">${staffOptions(i.owner||'',i.grp)}</select>
+        <div class="note" style="margin-top:6px">${i.grp==='nurse'
           ? 'ครุภัณฑ์ทางการแพทย์ — แสดงเฉพาะรายชื่อพยาบาล'
-          : 'ครุภัณฑ์สำนักงาน — แสดงเฉพาะรายชื่อ PN / Aid Worker'}</div></div>
+          : 'ครุภัณฑ์ของ PN / Aid Worker — แสดงเฉพาะรายชื่อกลุ่มนี้'+
+            (i.cat==='med'?' (ยกมาจากชีตการแพทย์ตามชนิดครุภัณฑ์)':'')}</div></div>
 
       <div class="field"><label>สถานะ</label>
         <select class="inp" id="edStatus">${sts.map(v=>
@@ -1154,6 +1177,16 @@ function openEdit(k){
 
       <div class="field"><label>จุดวาง</label>
         <input class="inp" id="edLoc" value="${esc(i.loc||'')}" placeholder="เช่น ห้องหัตถการ, ทีม 2"></div>
+
+      <div class="field"><label>ราคา (บาท)</label>
+        <div style="display:flex;gap:9px;align-items:center">
+          <input class="inp" id="edPrice" inputmode="decimal" style="flex:1"
+                 value="${i.price?i.price:''}" placeholder="เช่น 185000">
+          <button class="btn" onclick="ocrPrice('${esc(k)}')"
+            ${i.doc?'':'disabled style="opacity:.45"'}>อ่านจากใบคุม</button>
+        </div>
+        <div id="ocrBox" class="note" style="margin-top:8px">${i.doc?''
+          :'รายการนี้ยังไม่มีไฟล์ใบคุม อัปโหลดก่อนจึงจะให้ระบบอ่านราคาได้'}</div></div>
 
       <div class="field"><label>หมายเหตุ</label>
         <textarea id="edNote">${esc(i.note||'')}</textarea></div>
@@ -1192,9 +1225,10 @@ async function submitEdit(k){
   const owner=$('#edOwner').value.trim();
   if(!owner) return toast('กรุณาเลือกผู้รับผิดชอบ','bad');
   try{
-    await api('updateItem',{cat:i.cat,row:i.row,owner,
+    const price=parseFloat(String($('#edPrice').value).replace(/[^\d.]/g,''))||0;
+    await api('updateItem',{cat:i.cat,row:i.row,owner,price,
       status:$('#edStatus').value,loc:$('#edLoc').value.trim(),note:$('#edNote').value.trim()});
-    i.owner=owner; i.status=$('#edStatus').value;
+    i.owner=owner; i.status=$('#edStatus').value; i.price=price;
     i.loc=$('#edLoc').value.trim(); i.note=$('#edNote').value.trim();
     refreshOwnerLists(); renderAll(); closeSheet();
     toast('บันทึกข้อมูลแล้ว','good');
@@ -1218,6 +1252,34 @@ async function doUpload(k,kind,input){
   finally{ bar.classList.remove('on'); input.value=''; }
 }
 
+async function ocrPrice(k){
+  const i=findItem(k); if(!i||!i.doc) return;
+  const box=$('#ocrBox');
+  box.innerHTML='กำลังให้ Google อ่านใบคุม… อาจใช้เวลา 10–20 วินาที';
+  try{
+    const d=await apiPost('ocrPrice',{fid:i.doc});
+    const c=d.candidates||[];
+    if(!c.length){
+      box.innerHTML='<span style="color:var(--warn)">อ่านไม่พบตัวเลขที่น่าจะเป็นราคา</span> '+
+        'ใบคุมอาจเป็นลายมือหรือสแกนไม่ชัด กรุณากรอกเอง';
+      return;
+    }
+    box.innerHTML='<b style="color:var(--plum)">แตะตัวเลขที่ใช่</b><div class="chips" '+
+      'style="margin-top:8px">'+c.map(x=>
+        `<button type="button" class="chip" onclick="pickPrice(${x.value})"
+           title="${esc(x.line)}">${baht(x.value)}${x.near?' ✓':''}</button>`).join('')+
+      '</div><div style="margin-top:7px;font-size:13px;color:var(--dim2)">'+
+      'เครื่องหมาย ✓ คือตัวเลขที่อยู่บรรทัดเดียวกับคำว่าราคาหรือบาท จึงน่าเชื่อถือกว่า</div>';
+  }catch(e){
+    box.innerHTML='<span style="color:var(--bad)">'+esc(e.message)+'</span>';
+  }
+}
+function pickPrice(v){
+  $('#edPrice').value=v;
+  $('#ocrBox').innerHTML='<span style="color:var(--ok)">ใส่ราคา '+baht(v)+
+    ' บาท แล้ว — ตรวจให้แน่ใจก่อนกดบันทึกข้อมูล</span>';
+}
+
 function refreshOwnerLists(){
   const o=ownerList();
   fillSelect('#fOwner',o,'ทุกผู้รับผิดชอบ');
@@ -1228,6 +1290,20 @@ function refreshOwnerLists(){
 /* ---- เปลี่ยนผู้รับผิดชอบหลายรายการพร้อมกัน ---- */
 function openBulkOwner(){
   const list=matchList();
+  const grps=[...new Set(list.map(i=>i.grp||(i.cat==='off'?'pn':'nurse')))];
+  if(grps.length>1){
+    $('#sheet').innerHTML=`
+      <div class="hd"><h4>เปลี่ยนผู้รับผิดชอบหลายรายการ</h4>
+        <button class="x" onclick="closeSheet()">✕</button></div>
+      <div class="bd"><div class="note" style="color:var(--bad)">
+        รายการที่กรองไว้มีทั้งของพยาบาลและของ PN / Aid Worker ปนกัน
+        จึงเปลี่ยนพร้อมกันไม่ได้ เพราะรายชื่อผู้รับผิดชอบคนละกลุ่ม<br><br>
+        กรุณากรองให้เหลือกลุ่มเดียวก่อน เช่นเลือกประเภทเป็นทางการแพทย์
+        หรือค้นชื่อครุภัณฑ์ให้แคบลง แล้วกดปุ่มนี้อีกครั้ง</div></div>`;
+    $('#scrim').classList.add('on');
+    return;
+  }
+  const grp=grps[0]||'';
   $('#sheet').innerHTML=`
     <div class="hd"><h4>เปลี่ยนผู้รับผิดชอบหลายรายการ</h4>
       <button class="x" onclick="closeSheet()">✕</button></div>
@@ -1236,8 +1312,10 @@ function openBulkOwner(){
         <b style="color:var(--plum);font-size:19px">${list.length}</b> รายการ
         ที่แสดงอยู่ในหน้าทะเบียนตอนนี้ ถ้ายังไม่ใช่ชุดที่ต้องการ ให้ปิดหน้านี้แล้วกรองใหม่ก่อน</div>
       <div class="field"><label>ผู้รับผิดชอบคนใหม่</label>
-        <select class="inp" id="bkOwner">${staffOptions('',
-          list.length&&list.every(x=>x.cat===list[0].cat)?list[0].cat:'')}</select></div>
+        <select class="inp" id="bkOwner">${staffOptions('',grp)}</select>
+        <div class="note" style="margin-top:6px">${grp==='nurse'
+          ? 'ทั้งหมดเป็นครุภัณฑ์ของพยาบาล'
+          : 'ทั้งหมดเป็นครุภัณฑ์ของ PN / Aid Worker'}</div></div>
       <div class="rows" style="max-height:220px;overflow:auto;margin-bottom:18px">
         ${list.slice(0,40).map(i=>`<div class="row" style="cursor:default">
           <div class="mid"><b>${esc(i.name)}</b><span>${esc(i.code)} · เดิม ${esc(i.owner||'—')}</span></div>
