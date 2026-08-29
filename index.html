@@ -277,6 +277,17 @@ select.inp{appearance:none;padding-right:38px;
 .kv{display:grid;grid-template-columns:118px 1fr;gap:9px 16px;font-size:16px;margin-bottom:20px}
 .kv dt{color:var(--dim)} .kv dd{margin:0;word-break:break-word}
 .kv dd.code{font-family:var(--f-d);font-weight:600;color:var(--plum)}
+.idcard{display:flex;gap:14px;align-items:center;background:var(--surface2);
+  border:1.5px solid var(--line2);border-radius:16px;padding:12px 14px;margin-bottom:18px}
+.idcard img{width:74px;height:74px;border-radius:12px;object-fit:cover;flex:none;
+  background:var(--lav-soft);border:1px solid var(--line)}
+.idcard .ph{width:74px;height:74px;border-radius:12px;flex:none;background:var(--lav-soft);
+  display:grid;place-items:center;color:var(--dim2);font-size:12px}
+.idcard .tx{min-width:0;flex:1}
+.idcard .tx b{display:block;font-size:16.5px;font-weight:500;line-height:1.35}
+.idcard .tx .cd{font-family:var(--f-d);font-weight:600;color:var(--plum);font-size:15px;
+  word-break:break-all}
+.idcard .tx .sm{font-size:13.5px;color:var(--dim)}
 .shot{width:100%;border-radius:16px;border:1px solid var(--line);background:var(--lav-soft);
   display:block;margin-bottom:18px;max-height:300px;object-fit:contain}
 .field{margin-bottom:16px}
@@ -568,7 +579,7 @@ select.inp{appearance:none;padding-right:38px;
     <h2 class="vt">ตรวจครุภัณฑ์ประจำเดือน</h2>
     <p class="vs" id="checkSub">—</p>
     <div class="tools">
-      <button class="btn pri" onclick="openScan()">
+      <button class="btn pri" onclick="openScan('check')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>
           <path d="M7 12h10"/></svg>สแกน QR ตรวจครุภัณฑ์</button>
@@ -601,10 +612,18 @@ select.inp{appearance:none;padding-right:38px;
     <h2 class="vt">ยืม-คืนครุภัณฑ์</h2>
     <p class="vs" id="loanSub">บันทึกการยืมออกและติดตามจนได้รับคืน</p>
     <div class="tools">
+      <button class="btn pri" onclick="openScan('loan')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>
+          <path d="M7 12h10"/></svg>สแกน QR เพื่อยืม / คืน</button>
+      <input class="inp" id="lnCode" placeholder="หรือพิมพ์เลขครุภัณฑ์" style="flex:1;min-width:190px">
+      <button class="btn" onclick="loanByCode(lnCode.value)">ค้นหา</button>
+      <button class="btn" onclick="openLoanPick()">เลือกจากรายการ</button>
+    </div>
+    <div class="tools">
       <label class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input class="inp" id="lnQ" placeholder="ค้นชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือผู้ยืม"></label>
-      <button class="btn pri" onclick="openLoanPick()">บันทึกการยืมใหม่</button>
+        <input class="inp" id="lnQ" placeholder="กรองรายการยืมด้วยชื่อครุภัณฑ์หรือผู้ยืม"></label>
     </div>
     <div class="chips" style="margin-bottom:16px">
       <button class="chip on" data-ln="out">กำลังยืม</button>
@@ -767,7 +786,7 @@ const S = {
   pin: '',
   items:[], checks:[], fixes:[], loans:[], staff:[], roles:{}, ward:null, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', shown:24, pickShown:36, ckShown:40,
-  sel:new Set(), layout:24, zoom:.6
+  sel:new Set(), layout:24, zoom:.6, scanMode:'check'
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                 'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1429,8 +1448,7 @@ function openEdit(k){
   $('#sheet').innerHTML=`
     <div class="hd"><h4>แก้ไขข้อมูลครุภัณฑ์</h4><button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
-      <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
-        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd></dl>
+      ${idCard(i)}
 
       <div class="field"><label>ผู้รับผิดชอบ</label>
         <select class="inp" id="edOwner">${staffOptions(i.owner||'',i.grp)}</select>
@@ -1842,9 +1860,7 @@ function openCheck(k,how){
   $('#sheet').innerHTML=`
     <div class="hd"><h4>ตรวจครุภัณฑ์</h4><button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
-      <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
-        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd>
-        <dt>รอบตรวจ</dt><dd>${thMonth(S.month)}</dd></dl>
+      ${idCard(i,'รอบตรวจ '+thMonth(S.month))}
       ${chkNow?`<div class="note" style="color:var(--warn);margin-bottom:16px">
         เดือนนี้บันทึกไว้แล้วว่า “${esc(chkNow.result)}” — บันทึกซ้ำจะเพิ่มเป็นรายการใหม่</div>`:''}
       <div class="field"><label>ผลการตรวจ</label>
@@ -1970,50 +1986,97 @@ function renderCheck(){
 }
 function findByCode(code){
   code=(code||'').trim(); if(!code) return;
-  const n=s=>String(s||'').replace(/[\s\-]/g,'').toLowerCase();
-  const hit=S.items.find(i=>n(i.code)===n(code)||n(i.ref)===n(code));
+  const hit=resolveScan(code);
   if(!hit) return toast('ไม่พบเลขครุภัณฑ์ '+code,'bad');
-  openCheck(key(hit), window._fromScan?'สแกน QR':'พิมพ์เลขครุภัณฑ์');
+  openCheck(key(hit), 'พิมพ์เลขครุภัณฑ์');
 }
 
 /* ═════════ สแกน ═════════ */
 let scanner=null;
-function openScan(){
+function openScan(mode){
+  S.scanMode = mode || 'check';
+  const loan = S.scanMode==='loan';
   $('#sheet').innerHTML=`
-    <div class="hd"><h4>สแกน QR ครุภัณฑ์</h4><button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="hd"><h4>${loan?'สแกน QR เพื่อยืม / คืน':'สแกน QR ครุภัณฑ์'}</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd"><div id="reader"></div>
-      <div class="scanhint">หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดฟอร์มตรวจให้อัตโนมัติ</div></div>`;
+      <div class="scanhint">${loan
+        ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ถ้าครุภัณฑ์ชิ้นนั้นถูกยืมอยู่ ระบบจะเปิดฟอร์มรับคืน '+
+          'ถ้ายังอยู่ในหอ จะเปิดฟอร์มบันทึกการยืม'
+        : 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดฟอร์มตรวจให้อัตโนมัติ'}</div></div>`;
   $('#scrim').classList.add('on'); setTimeout(startScan,220);
 }
 function startScan(){
   if(typeof Html5Qrcode==='undefined') return toast('โหลดตัวสแกนไม่สำเร็จ','bad');
   scanner=new Html5Qrcode('reader');
   scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},
-    txt=>{stopScan(); window._fromScan=true; handleScan(txt); window._fromScan=false;},()=>{})
+    txt=>{stopScan(); handleScan(txt);},()=>{})
     .catch(e=>toast('เปิดกล้องไม่ได้: '+e,'bad'));
 }
 function stopScan(){ if(scanner){try{scanner.stop().then(()=>scanner.clear());}catch(e){} scanner=null;} }
-function handleScan(txt){
+/* แปลงข้อความจาก QR หรือเลขที่พิมพ์ ให้เป็นครุภัณฑ์หนึ่งชิ้น */
+function resolveScan(txt){
+  let code=String(txt||'').trim(), kref=null;
   try{
     const u=new URL(txt);
-    const k=u.searchParams.get('k'); if(k) return openByRef(k);
-    const c=u.searchParams.get('c')||u.searchParams.get('code'); if(c) return findByCode(c);
+    kref=u.searchParams.get('k');
+    code=u.searchParams.get('c')||u.searchParams.get('code')||code;
   }catch(e){}
-  findByCode(txt);
+  if(kref){
+    const [cat,row]=String(kref).split('.');
+    return S.items.find(i=>i.cat===cat && String(i.row)===row);
+  }
+  const n=v=>String(v||'').replace(/[\s\-]/g,'').toLowerCase();
+  return S.items.find(i=>n(i.code)===n(code)||n(i.ref)===n(code));
 }
-function openByRef(k){
-  const [cat,row]=String(k).split('.');
-  const hit=S.items.find(i=>i.cat===cat&&String(i.row)===row);
-  if(!hit) return toast('ไม่พบครุภัณฑ์ตามรหัสในสติ๊กเกอร์','bad');
-  openCheck(key(hit),'สแกน QR');
+function handleScan(txt){
+  const it=resolveScan(txt);
+  if(!it) return toast('ไม่พบครุภัณฑ์ตามรหัสที่สแกน','bad');
+  if(S.scanMode==='loan') return routeLoan(it,'สแกน QR');
+  openCheck(key(it),'สแกน QR');
 }
+
+/* สแกนแล้วพาไปยังฟอร์มยืมหรือฟอร์มคืน ตามสถานะปัจจุบัน */
+function routeLoan(it,how){
+  const l=openLoanMap()[ck(it)];
+  if(l){ toast('ครุภัณฑ์นี้ถูกยืมอยู่ · เปิดฟอร์มรับคืน','good'); return openLoanDetail(l.row); }
+  if(!ALIVE(it)) return toast('ครุภัณฑ์นี้แทงจำหน่ายแล้ว ยืมไม่ได้','bad');
+  toast('เปิดฟอร์มบันทึกการยืม','good');
+  openLoanForm(key(it));
+}
+function loanByCode(code){
+  code=(code||'').trim(); if(!code) return;
+  const it=resolveScan(code);
+  if(!it) return toast('ไม่พบเลขครุภัณฑ์ '+code,'bad');
+  routeLoan(it,'พิมพ์เลขครุภัณฑ์');
+}
+/* เปิดจากลิงก์ใน QR โดยตรง เช่น ?k=med.12 หรือ ?c=6515... */
 function handleDeepLink(){
-  const p=new URLSearchParams(location.search), c=p.get('c'), k=p.get('k');
+  const p=new URLSearchParams(location.search);
+  const c=p.get('c'), k=p.get('k'), act=p.get('a');
   if(!c&&!k) return;
-  go('check'); setTimeout(()=>k?openByRef(k):findByCode(c),400);
+  const it = k ? resolveScan(location.href) : resolveScan(c);
+  if(!it) return;
+  if(act==='loan'){ go('loan'); setTimeout(()=>routeLoan(it,'สแกน QR'),400); return; }
+  go('check'); setTimeout(()=>openCheck(key(it),'สแกน QR'),400);
 }
 
 /* ═════════ ยืม-คืนครุภัณฑ์ ═════════ */
+/* แถบยืนยันว่าเป็นครุภัณฑ์ชิ้นที่ต้องการจริง */
+function idCard(i,extra){
+  if(!i) return '';
+  const u=imgUrl(i.img,300);
+  return `<div class="idcard">
+    ${u?`<img src="${u}" alt="" onerror="this.outerHTML='<div class=\\'ph\\'>ไม่มีรูป</div>'">`
+       :`<div class="ph">ไม่มีรูป</div>`}
+    <div class="tx">
+      <b>${esc(i.name)}</b>
+      <div class="cd">${esc(i.code)}</div>
+      <div class="sm">ผู้รับผิดชอบ ${esc(i.owner||'—')}${i.loc?' · '+esc(i.loc):''}</div>
+      ${extra?`<div class="sm">${extra}</div>`:''}
+    </div></div>`;
+}
+
 const today10 = () => new Date().toISOString().slice(0,10);
 function openLoanMap(){
   const m={};
@@ -2099,9 +2162,7 @@ function openLoanForm(k){
     <div class="hd"><h4>บันทึกการยืมครุภัณฑ์</h4>
       <button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
-      <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
-        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd>
-        <dt>ผู้รับผิดชอบ</dt><dd>${esc(i.owner||'—')}</dd></dl>
+      ${idCard(i,'ตรวจดูรูปและเลขให้ตรงกับของจริงก่อนบันทึก')}
       <div class="field"><label>ผู้ยืม</label>
         <input class="inp" id="lnWho" placeholder="ชื่อ-สกุลผู้ยืม"></div>
       <div class="field"><label>หน่วยงาน / สถานที่ที่นำไปใช้</label>
@@ -2151,8 +2212,8 @@ function openLoanDetail(row){
     <div class="hd"><h4>${esc(l.name)}</h4>
       <button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
+      ${idCard(it)}
       <dl class="kv">
-        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(l.code)}</dd>
         <dt>ผู้ยืม</dt><dd>${esc(l.who)}${l.tel?' · โทร '+esc(l.tel):''}</dd>
         <dt>นำไปที่</dt><dd>${esc(l.place||'—')}</dd>
         <dt>วันที่ยืม</dt><dd>${esc(l.out||'—')}</dd>
@@ -2171,6 +2232,9 @@ function openLoanDetail(row){
           <button data-v="ชำรุด">ชำรุด</button></div></div>
       <div class="field"><label>วันที่คืนจริง</label>
         <input class="inp" type="date" id="lnBack" value="${today10()}"></div>
+      <div class="field"><label>นำกลับมาเก็บที่ (หน่วยงาน/จุดวาง)</label>
+        <input class="inp" id="lnLoc" value="${esc(it?it.loc:'')}"
+               placeholder="เช่น ห้องเก็บอุปกรณ์, ทีม 2"></div>
       <div class="field"><label>ผู้รับคืน</label>
         <select class="inp" id="lnGot">${staffOptions(S.by)}</select></div>
       <div class="field"><label>หมายเหตุ</label><textarea id="lnNote"></textarea></div>
@@ -2190,6 +2254,7 @@ async function submitReturn(row,cat,itemRow){
   try{
     const d=await api('closeLoan',{row,cat,itemRow,
       back:$('#lnBack').value, cond:window._lnCond?window._lnCond():'ปกติ',
+      loc:$('#lnLoc').value.trim(),
       got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim()});
     S.loans=d.loans||S.loans;
     closeSheet(); await reload(); toast('บันทึกการรับคืนแล้ว','good');
@@ -2222,8 +2287,7 @@ function openFixForm(k){
   $('#sheet').innerHTML=`
     <div class="hd"><h4>แจ้งส่งซ่อม</h4><button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
-      <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
-        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd></dl>
+      ${idCard(i)}
       <div class="field"><label>วันที่ส่งซ่อม</label>
         <input class="inp" type="date" id="fxDate" value="${today}"></div>
       <div class="field"><label>อาการ / ปัญหาที่พบ</label>
