@@ -843,7 +843,7 @@ const S = {
   pin: '',
   items:[], checks:[], fixes:[], loans:[], staff:[], roles:{}, ward:null, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', shown:24, pickShown:36, ckShown:40,
-  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null
+  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                 'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1169,6 +1169,7 @@ async function reload(){
   $('#led').className='led';
   busyOn('กำลังดึงข้อมูลล่าสุด…');
   try{
+    S.ckCache={};
     const d=await jsonp({action:'bootstrap',month:S.month,fresh:'1'});
     apply(d); saveSnap(d);
     $('#conn').classList.remove('on');
@@ -1179,6 +1180,7 @@ async function reload(){
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
   S.loans=d.loans||S.loans;
+  if(d.month) S.ckCache[d.month]=S.checks;
   S.staff=d.staff||S.staff; S.roles=d.roles||S.roles; S.ward=d.ward||S.ward;
   const ow=sortByStaff(d.owners||[]);
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
@@ -1206,11 +1208,17 @@ function buildMonths(){
   }
   $('#monthSel').innerHTML=out.join(''); $('#monthSel').value=S.month;
 }
+/* เปลี่ยนรอบเดือน ดึงเฉพาะบันทึกการตรวจ ไม่ต้องโหลดทะเบียนครุภัณฑ์ใหม่ */
 $('#monthSel').onchange=async e=>{
-  S.month=e.target.value;
-  busyOn('กำลังเปลี่ยนรอบเดือน…');
-  try{ const d=await jsonp({action:'bootstrap',month:S.month}); apply(d); saveSnap(d); }
-  catch(err){ toast(err.message,'bad'); }
+  const m=e.target.value;
+  S.month=m;
+  if(S.ckCache[m]){ S.checks=S.ckCache[m]; renderAll(); return; }
+  busyOn('กำลังดึงผลตรวจรอบ '+thMonth(m)+'…');
+  try{
+    const d=await jsonp({action:'checks',month:m});
+    S.checks=d.checks||[]; S.ckCache[m]=S.checks;
+    renderAll();
+  }catch(err){ toast(err.message,'bad'); }
   finally{ busyOff(); }
 };
 
@@ -2359,6 +2367,7 @@ async function submitCheck(){
       how:ckState.how||'สแกน QR',
       lat:pos?pos.lat:'', lng:pos?pos.lng:'', acc:pos?pos.acc:''});
     S.checks=d.checks||S.checks;
+    S.ckCache[S.month]=S.checks;
     if(ckState.result!=='ปกติ') i.status=ckState.result==='ถูกยืม'?'ถูกยืม':ckState.result;
     if($('#ckLoc').value.trim()) i.loc=$('#ckLoc').value.trim();
     closeSheet(); renderAll();
@@ -2713,6 +2722,7 @@ async function submitLoan(k){
       out:$('#lnOut').value, due:($('#lnDue').disabled?'':$('#lnDue').value),
       why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim()});
     S.loans=d.loans||S.loans;
+  if(d.month) S.ckCache[d.month]=S.checks;
     i.status='ถูกยืม';
     if($('#lnPlace').value.trim()) i.loc=$('#lnPlace').value.trim();
     closeSheet(); renderAll(); go('loan');
@@ -2775,6 +2785,7 @@ async function submitReturn(row,cat,itemRow){
       loc:$('#lnLoc').value.trim(),
       got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim()});
     S.loans=d.loans||S.loans;
+  if(d.month) S.ckCache[d.month]=S.checks;
     closeSheet(); await reload(); toast('บันทึกการรับคืนแล้ว','good');
   }catch(e){ toast(e.message,'bad'); }
 }
