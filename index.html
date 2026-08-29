@@ -576,6 +576,7 @@ select.inp{appearance:none;padding-right:38px;
       <button class="chip" data-f="broken">ชำรุด/ไม่พบ</button>
       <button class="chip" data-f="fix">อยู่ระหว่างซ่อม</button>
       <button class="chip" data-f="loan">ถูกยืมอยู่</button>
+      <button class="chip" data-f="wait">รอซ่อมเวลาราชการ</button>
       <span style="flex:1"></span>
       <button class="chip" onclick="openOwnerReport()"
         style="border-color:var(--plum);background:var(--lav-soft);color:var(--plum)">
@@ -648,9 +649,24 @@ select.inp{appearance:none;padding-right:38px;
 
   <section class="view" id="v-fix">
     <h2 class="vt">งานส่งซ่อม</h2>
-    <p class="vs">บันทึกการส่งซ่อมและติดตามจนรับเครื่องคืน</p>
+    <p class="vs" id="fixSub">บันทึกการส่งซ่อมและติดตามจนรับเครื่องคืน</p>
+    <div class="tools">
+      <button class="btn pri" onclick="openScan('fix')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>
+          <path d="M7 12h10"/></svg>สแกน QR เพื่อแจ้งซ่อม / รับคืน</button>
+      <input class="inp" id="fxCode" placeholder="หรือพิมพ์เลขครุภัณฑ์" style="flex:1;min-width:190px">
+      <button class="btn" onclick="fixByCode(fxCode.value)">ค้นหา</button>
+      <button class="btn" onclick="openFixPick()">เลือกจากรายการ</button>
+    </div>
+    <div class="tools">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="inp" id="fxQ" placeholder="กรองรายการซ่อมด้วยชื่อครุภัณฑ์หรืออาการ"></label>
+    </div>
     <div class="chips" style="margin-bottom:18px">
       <button class="chip on" data-fx="open">ยังไม่ปิดงาน</button>
+      <button class="chip" data-fx="wait">รอซ่อมเวลาราชการ</button>
       <button class="chip" data-fx="all">ทั้งหมด</button>
     </div>
     <div class="rows" id="fixList"></div>
@@ -1238,7 +1254,7 @@ function renderDash(){
   drawTrace(pct);
 
   /* วงกลมสัดส่วนสถานะ */
-  const COL={'มีของ':'#1F8A63','ถูกยืม':'#B4781A','ส่งซ่อม':'#7A51BC',
+  const COL={'มีของ':'#1F8A63','ถูกยืม':'#B4781A','รอซ่อม':'#D98A00','ส่งซ่อม':'#7A51BC',
              'ชำรุด':'#C4405F','ไม่พบ':'#E0698A','แทงจำหน่าย':'#9B90AE'};
   const byS={}; S.items.forEach(i=>byS[i.status]=(byS[i.status]||0)+1);
   const ent=Object.entries(byS).sort((a,b)=>b[1]-a[1]);
@@ -1316,6 +1332,7 @@ function statusTag(s){
   if(s==='มีของ') return 't-ok';
   if(s==='แทงจำหน่าย') return 't-off';
   if(s==='ส่งซ่อม') return 't-fix';
+  if(s==='รอซ่อม') return 't-warn';
   if(s==='ชำรุด'||s==='ไม่พบ') return 't-bad';
   return 't-warn';
 }
@@ -1358,6 +1375,10 @@ function matchList(){
     if(S.filter==='broken'&&!(i.status==='ชำรุด'||i.status==='ไม่พบ')) return false;
     if(S.filter==='fix'&&!of[ck(i)]) return false;
     if(S.filter==='loan'&&!openLoanMap()[ck(i)]) return false;
+    if(S.filter==='wait'){
+      const f=of[ck(i)];
+      if(!f||f.state!=='รอซ่อมเวลาราชการ') return false;
+    }
     if(q&&![i.name,i.code,i.ref,i.owner,i.loc,i.note].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1505,7 +1526,7 @@ function fileToJpeg(file,max,q){
 function openEdit(k){
   const i=findItem(k); if(!i) return;
   const ph=imgUrl(i.img,400), dc=imgUrl(i.doc,400);
-  const sts=['มีของ','ถูกยืม','ส่งซ่อม','ชำรุด','ไม่พบ','แทงจำหน่าย'];
+  const sts=['มีของ','ถูกยืม','รอซ่อม','ส่งซ่อม','ชำรุด','ไม่พบ','แทงจำหน่าย'];
   $('#sheet').innerHTML=`
     <div class="hd"><h4>แก้ไขข้อมูลครุภัณฑ์</h4><button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
@@ -2058,14 +2079,18 @@ function findByCode(code){
 let scanner=null;
 function openScan(mode){
   S.scanMode = mode || 'check';
-  const loan = S.scanMode==='loan';
+  const loan = S.scanMode==='loan', fix = S.scanMode==='fix';
   $('#sheet').innerHTML=`
-    <div class="hd"><h4>${loan?'สแกน QR เพื่อยืม / คืน':'สแกน QR ครุภัณฑ์'}</h4>
+    <div class="hd"><h4>${loan?'สแกน QR เพื่อยืม / คืน'
+      :fix?'สแกน QR เพื่อแจ้งซ่อม':'สแกน QR ครุภัณฑ์'}</h4>
       <button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd"><div id="reader"></div>
       <div class="scanhint">${loan
         ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ถ้าครุภัณฑ์ชิ้นนั้นถูกยืมอยู่ ระบบจะเปิดฟอร์มรับคืน '+
           'ถ้ายังอยู่ในหอ จะเปิดฟอร์มบันทึกการยืม'
+        : fix
+        ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ถ้ามีงานซ่อมค้างอยู่จะเปิดรายละเอียดงานนั้น '+
+          'ถ้ายังไม่มี จะเปิดฟอร์มแจ้งส่งซ่อม'
         : 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดฟอร์มตรวจให้อัตโนมัติ'}</div></div>`;
   $('#scrim').classList.add('on'); setTimeout(startScan,220);
 }
@@ -2096,6 +2121,7 @@ function handleScan(txt){
   const it=resolveScan(txt);
   if(!it) return toast('ไม่พบครุภัณฑ์ตามรหัสที่สแกน','bad');
   if(S.scanMode==='loan') return routeLoan(it,'สแกน QR');
+  if(S.scanMode==='fix')  return routeFix(it);
   openCheck(key(it),'สแกน QR');
 }
 
@@ -2122,6 +2148,34 @@ function handleDeepLink(){
   if(!it) return;
   if(act==='loan'){ go('loan'); setTimeout(()=>routeLoan(it,'สแกน QR'),400); return; }
   go('check'); setTimeout(()=>openCheck(key(it),'สแกน QR'),400);
+}
+
+/* อัปเดตสถานะงานซ่อมโดยยังไม่ปิดงาน */
+async function setFixState(row,cat,itemRow,state){
+  if(!grabPin()) return;
+  try{
+    const d=await api('fixState',{row,cat,itemRow,state});
+    S.fixes=d.fixes||S.fixes;
+    const it=S.items.find(i=>i.cat===cat && String(i.row)===String(itemRow));
+    if(it) it.status = state==='รอซ่อมเวลาราชการ' ? 'รอซ่อม' : 'ส่งซ่อม';
+    closeSheet(); renderAll(); toast('อัปเดตสถานะเป็น '+state,'good');
+  }catch(e){ toast(e.message,'bad'); }
+}
+
+/* แนบรูปใบแจ้งซ่อมภายหลัง */
+async function uploadFixDoc(row,input){
+  const f=input.files&&input.files[0];
+  if(!f) return;
+  if(!grabPin()){ input.value=''; return; }
+  const bar=$('#fxUpBar'); if(bar) bar.classList.add('on');
+  try{
+    const data=await fileToJpeg(f,1800,.85);
+    const d=await apiPost('uploadFixDoc',{row,data,mime:'image/jpeg'});
+    S.fixes=d.fixes||S.fixes;
+    renderAll(); openFixDetail(row);
+    toast('อัปโหลดใบแจ้งซ่อมแล้ว','good');
+  }catch(e){ toast('อัปโหลดไม่สำเร็จ: '+e.message,'bad'); }
+  finally{ if(bar) bar.classList.remove('on'); input.value=''; }
 }
 
 /* ═════════ ยืม-คืนครุภัณฑ์ ═════════ */
@@ -2368,21 +2422,82 @@ $$('[data-fx]').forEach(b=>b.onclick=()=>{
   $$('[data-fx]').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); S.fxTab=b.dataset.fx; renderFix();
 });
+$('#fxQ').addEventListener('input',renderFix);
+
+const FIX_OPEN = f => f.state!=='ซ่อมเสร็จ' && f.state!=='ซ่อมไม่ได้';
+const FIX_TAG  = f => f.state==='ซ่อมเสร็จ' ? 't-ok'
+                    : f.state==='ซ่อมไม่ได้' ? 't-bad'
+                    : f.state==='รอซ่อมเวลาราชการ' ? 't-warn' : 't-fix';
+
 function renderFix(){
-  const list=S.fxTab==='open'
-    ? S.fixes.filter(f=>f.state!=='ซ่อมเสร็จ'&&f.state!=='ซ่อมไม่ได้')
-    : S.fixes.slice().reverse();
-  $('#fixList').innerHTML=list.length?list.map(f=>`
-    <button class="row" data-r="${f.row}">
-      <div class="thumb" style="display:grid;place-items:center;color:var(--plum);font-size:13px">
-        ${esc((f.sent||'').slice(5)||'—')}</div>
-      <div class="mid"><b>${esc(f.name)}</b><span>${esc(f.code)} · ${esc(f.issue||'—')}</span></div>
-      <span class="tag ${f.state==='ซ่อมเสร็จ'?'t-ok':f.state==='ซ่อมไม่ได้'?'t-bad':'t-fix'}">${esc(f.state)}</span>
-    </button>`).join('')
-    :`<div class="empty"><b>ไม่มีงานซ่อม${S.fxTab==='open'?'ค้าง':''}</b>
-       แจ้งส่งซ่อมได้จากหน้ารายละเอียดครุภัณฑ์</div>`;
+  const q=$('#fxQ').value.trim().toLowerCase();
+  const open=S.fixes.filter(FIX_OPEN);
+  const wait=open.filter(f=>f.state==='รอซ่อมเวลาราชการ');
+  let list = S.fxTab==='wait' ? wait
+           : S.fxTab==='all'  ? S.fixes.slice().reverse() : open;
+  if(q) list=list.filter(f=>[f.name,f.code,f.issue,f.to].join(' ').toLowerCase().includes(q));
+
+  $('#fixSub').innerHTML=`ยังไม่ปิดงาน <b style="color:var(--plum)">${open.length}</b> รายการ`+
+    (wait.length?` · <b style="color:var(--warn)">รอซ่อมเวลาราชการ ${wait.length} รายการ</b>`:'')+
+    ' · บันทึกการส่งซ่อมและติดตามจนรับเครื่องคืน';
+
+  $('#fixList').innerHTML = list.length ? list.slice(0,80).map(f=>{
+    const it=S.items.find(i=>i.cat===f.cat && nk(i.code)===nk(f.code));
+    const u=it?imgUrl(it.img):'';
+    return `<button class="row" data-r="${f.row}">
+      ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
+        :`<div class="thumb"></div>`}
+      <div class="mid"><b>${esc(f.name)}</b>
+        <span>${esc(f.code)} · ${esc(f.issue||'—')}${f.to?' · '+esc(f.to):''}
+        ${f.sent?' · ส่ง '+esc(f.sent):''}</span></div>
+      ${f.file?`<span class="tag t-fix">มีใบแจ้ง</span>`:''}
+      <span class="tag ${FIX_TAG(f)}">${esc(f.state)}</span></button>`;
+  }).join('')
+   : `<div class="empty"><b>${S.fxTab==='wait'?'ไม่มีรายการรอซ่อม':'ไม่มีงานซ่อม'}</b>
+       สแกน QR หรือกดเลือกจากรายการเพื่อแจ้งซ่อม</div>`;
   $$('#fixList .row').forEach(el=>el.onclick=()=>openFixDetail(+el.dataset.r));
 }
+
+/* สแกนแล้วพาไปยังฟอร์มแจ้งซ่อมหรือหน้างานซ่อมที่ค้างอยู่ */
+function routeFix(it){
+  const f=S.fixes.filter(FIX_OPEN).find(x=>x.cat===it.cat && nk(x.code)===nk(it.code));
+  if(f){ toast('ครุภัณฑ์นี้มีงานซ่อมค้างอยู่ · เปิดรายละเอียด','good'); return openFixDetail(f.row); }
+  toast('เปิดฟอร์มแจ้งส่งซ่อม','good');
+  openFixForm(key(it));
+}
+function fixByCode(code){
+  code=(code||'').trim(); if(!code) return;
+  const it=resolveScan(code);
+  if(!it) return toast('ไม่พบเลขครุภัณฑ์ '+code,'bad');
+  routeFix(it);
+}
+function openFixPick(){
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>เลือกครุภัณฑ์ที่จะแจ้งซ่อม</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="field"><label>ค้นหาครุภัณฑ์</label>
+        <input class="inp" id="fpQ" placeholder="พิมพ์ชื่อหรือเลขครุภัณฑ์" autofocus></div>
+      <div class="rows" id="fpList" style="max-height:52vh;overflow:auto"></div>
+    </div>`;
+  $('#fpQ').addEventListener('input',fpRender);
+  fpRender();
+  $('#scrim').classList.add('on');
+}
+function fpRender(){
+  const q=$('#fpQ').value.trim().toLowerCase();
+  const of=openFixMap();
+  const list=S.items.filter(i=>ALIVE(i) && !of[ck(i)] &&
+    (!q||[i.name,i.code,i.owner].join(' ').toLowerCase().includes(q))).slice(0,40);
+  $('#fpList').innerHTML=list.length?list.map(i=>`
+    <button class="row" data-k="${esc(key(i))}">
+      <div class="mid"><b>${esc(i.name)}</b>
+        <span>${esc(i.code)} · ${esc(i.owner||'—')}</span></div>
+      <span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></button>`).join('')
+   :'<div class="note" style="padding:14px">ไม่พบครุภัณฑ์ (รายการที่มีงานซ่อมค้างจะไม่แสดง)</div>';
+  $$('#fpList .row').forEach(el=>el.onclick=()=>openFixForm(el.dataset.k));
+}
+
 function openFixForm(k){
   const i=findItem(k); if(!i) return;
   const today=new Date().toISOString().slice(0,10);
@@ -2397,12 +2512,34 @@ function openFixForm(k){
       <div class="field"><label>ส่งซ่อมที่</label>
         <input class="inp" id="fxTo" placeholder="เช่น งานเครื่องมือแพทย์"></div>
       <div class="field"><label>เลขที่ใบส่งซ่อม</label><input class="inp" id="fxDoc"></div>
+      <div class="field"><label>สถานะเริ่มต้น</label>
+        <div class="seg" id="fxStSeg">
+          <button type="button" data-v="ส่งซ่อมแล้ว" class="on">ส่งซ่อมแล้ว</button>
+          <button type="button" data-v="รอซ่อมเวลาราชการ">รอซ่อมเวลาราชการ</button>
+        </div>
+        <div class="note" style="margin-top:6px">เลือก “รอซ่อมเวลาราชการ” เมื่อพบชำรุดนอกเวลา
+          และยังส่งไม่ได้ ระบบจะแยกไว้ให้ตามงานต่อในวันทำการ</div></div>
       <div class="field"><label>ผู้แจ้ง</label>
         <select class="inp" id="fxBy">${staffOptions(S.by)}</select></div>
+      <label class="drop" style="margin-bottom:14px">
+        <div class="ph" id="fxDocPv">ใบแจ้ง</div>
+        <div class="mid"><b>แนบรูปใบแจ้งซ่อม</b>
+          <span>ถ่ายใบแจ้งซ่อมเก็บไว้เป็นหลักฐาน จะแนบตอนนี้หรือแนบภายหลังก็ได้</span></div>
+        <span class="act">เลือกไฟล์</span>
+        <input type="file" accept="image/*" capture="environment" id="fxDocFile"></label>
       ${pinField()}
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitFix('${esc(k)}')">บันทึกการส่งซ่อม</button>
     </div>`;
+  let st='ส่งซ่อมแล้ว';
+  $$('#fxStSeg button').forEach(b=>b.onclick=()=>{
+    $$('#fxStSeg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); st=b.dataset.v; });
+  window._fxNewState=()=>st;
+  $('#fxDocFile').addEventListener('change',e=>{
+    const f=e.target.files&&e.target.files[0];
+    $('#fxDocPv').textContent=f?'พร้อมส่ง':'ใบแจ้ง';
+  });
   $('#scrim').classList.add('on');
 }
 async function submitFix(k){
@@ -2410,11 +2547,23 @@ async function submitFix(k){
   if(!$('#fxIssue').value.trim()) return toast('กรุณาระบุอาการที่พบ','bad');
   if(!grabPin()) return;
   try{
-    const d=await api('saveFix',{cat:i.cat,row:i.row,code:i.code,name:i.name,
+    const st=window._fxNewState?window._fxNewState():'ส่งซ่อมแล้ว';
+    const file=$('#fxDocFile').files&&$('#fxDocFile').files[0];
+    const d=await api('saveFix',{cat:i.cat,row:i.row,code:i.code,name:i.name,state:st,
       sent:$('#fxDate').value,issue:$('#fxIssue').value.trim(),to:$('#fxTo').value.trim(),
       doc:$('#fxDoc').value.trim(),by:$('#fxBy').value.trim()});
-    S.fixes=d.fixes||S.fixes; i.status='ส่งซ่อม'; i.fixFlag='มี';
-    closeSheet(); renderAll(); toast('บันทึกการส่งซ่อมแล้ว','good');
+    S.fixes=d.fixes||S.fixes;
+    i.status = st==='รอซ่อมเวลาราชการ' ? 'รอซ่อม' : 'ส่งซ่อม';
+    i.fixFlag='มี';
+    if(file && d.row){
+      try{
+        const data=await fileToJpeg(file,1800,.85);
+        const u=await apiPost('uploadFixDoc',{row:d.row,data,mime:'image/jpeg'});
+        S.fixes=u.fixes||S.fixes;
+      }catch(e){ toast('บันทึกงานซ่อมแล้ว แต่อัปโหลดใบแจ้งไม่สำเร็จ: '+e.message,'bad'); }
+    }
+    closeSheet(); renderAll(); go('fix');
+    toast('บันทึกการส่งซ่อมแล้ว · '+st,'good');
   }catch(e){ toast(e.message,'bad'); }
 }
 function openFixDetail(row){
@@ -2429,10 +2578,35 @@ function openFixDetail(row){
         <dt>วันที่ส่ง</dt><dd>${esc(f.sent||'—')}</dd>
         <dt>อาการ</dt><dd>${esc(f.issue||'—')}</dd>
         <dt>ส่งซ่อมที่</dt><dd>${esc(f.to||'—')}</dd>
-        <dt>สถานะ</dt><dd><span class="tag ${closed?'t-ok':'t-fix'}">${esc(f.state)}</span></dd>
+        <dt>สถานะ</dt><dd><span class="tag ${FIX_TAG(f)}">${esc(f.state)}</span></dd>
+        ${f.doc?`<dt>เลขที่ใบส่งซ่อม</dt><dd>${esc(f.doc)}</dd>`:''}
         ${f.back?`<dt>รับคืน</dt><dd>${esc(f.back)}</dd>`:''}
-        ${f.result?`<dt>ผลการซ่อม</dt><dd>${esc(f.result)}</dd>`:''}</dl>
-      ${closed?'':`<div class="hr"></div>
+        ${f.result?`<dt>ผลการซ่อม</dt><dd>${esc(f.result)}</dd>`:''}
+        <dt>ใบแจ้งซ่อม</dt><dd>${f.file
+          ?`<a href="https://drive.google.com/file/d/${f.file}/view" target="_blank"
+              rel="noopener">เปิดดูใบแจ้งซ่อม</a>`
+          :'<span style="color:var(--dim2)">ยังไม่ได้แนบ</span>'}</dd></dl>
+
+      <label class="drop" style="margin-bottom:16px">
+        ${f.file?`<img class="pv" src="${imgUrl(f.file,300)}" alt=""
+            onerror="this.outerHTML='<div class=\\'ph\\'>ใบแจ้ง</div>'">`
+          :`<div class="ph">ใบแจ้ง</div>`}
+        <div class="mid"><b>${f.file?'เปลี่ยนรูปใบแจ้งซ่อม':'แนบรูปใบแจ้งซ่อม'}</b>
+          <span>ถ่ายใบแจ้งซ่อมเก็บไว้เป็นหลักฐานประกอบการเบิกจ่ายและตรวจสอบ</span>
+          <div class="bar-up" id="fxUpBar"><i></i></div></div>
+        <span class="act">เลือกไฟล์</span>
+        <input type="file" accept="image/*" capture="environment"
+          onchange="uploadFixDoc(${f.row},this)"></label>
+
+      ${closed?'':`
+      <div class="field"><label>อัปเดตสถานะระหว่างซ่อม</label>
+        <div class="seg">
+          <button type="button" class="btn" style="flex:1;justify-content:center"
+            onclick="setFixState(${f.row},'${esc(f.cat)}',${it?it.row:0},'รอซ่อมเวลาราชการ')">รอซ่อมเวลาราชการ</button>
+          <button type="button" class="btn" style="flex:1;justify-content:center"
+            onclick="setFixState(${f.row},'${esc(f.cat)}',${it?it.row:0},'กำลังซ่อม')">กำลังซ่อม</button>
+        </div></div>
+      <div class="hr"></div>
       <div class="field"><label>ผลการซ่อม</label>
         <div class="seg" id="fxSeg"><button data-v="ซ่อมเสร็จ" class="on">ซ่อมเสร็จ</button>
           <button data-v="ซ่อมไม่ได้">ซ่อมไม่ได้</button></div></div>
