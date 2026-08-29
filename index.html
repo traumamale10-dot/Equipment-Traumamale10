@@ -101,44 +101,33 @@ p.vs{margin:0 0 24px;color:var(--dim);font-size:15.5px}
 .card h3{margin:0 0 16px;font-family:var(--f-d);font-size:15px;font-weight:600;
   letter-spacing:.3px;color:var(--plum)}
 
-.hero{position:relative;overflow:hidden;border-radius:26px;margin-bottom:16px;padding:24px 26px 18px;
-  background:linear-gradient(135deg,#5A3391 0%,#7A51BC 48%,#A97FE6 100%);
-  box-shadow:0 18px 46px rgba(76,44,124,.32);color:#fff}
-.hero::before{content:'';position:absolute;inset:-40% -10% auto auto;width:52%;aspect-ratio:1;
-  border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 62%);
-  animation:float 9s ease-in-out infinite}
-.hero::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 54px),
-             repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 54px);
-  mask-image:linear-gradient(200deg,#000,transparent 72%)}
-@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(-14px,16px)}}
-.hero .row{position:relative;z-index:2;display:flex;align-items:center;gap:26px;flex-wrap:wrap}
-.gauge{width:158px;height:158px;flex:none;position:relative}
-.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
-.gauge .bgc{fill:none;stroke:rgba(255,255,255,.2);stroke-width:11}
-.gauge .fgc{fill:none;stroke:url(#gg);stroke-width:11;stroke-linecap:round;
+.hero{position:relative;overflow:hidden;border-radius:24px;margin-bottom:16px;padding:22px 24px;
+  background:linear-gradient(135deg,#5A3391 0%,#7A51BC 52%,#9C77DA 100%);
+  box-shadow:0 14px 38px rgba(76,44,124,.28);color:#fff}
+.hero *{color:#fff}
+.hero .row{display:flex;align-items:center;gap:24px;flex-wrap:wrap;position:relative;z-index:2}
+.gauge{width:152px;height:152px;flex:none;position:relative}
+.gauge svg{display:block;width:152px;height:152px;transform:rotate(-90deg)}
+.gauge .bgc{fill:none;stroke:rgba(255,255,255,.22);stroke-width:12}
+.gauge .fgc{fill:none;stroke:#C6FFE9;stroke-width:12;stroke-linecap:round;
   transition:stroke-dashoffset 1.1s cubic-bezier(.2,.9,.3,1)}
-.gauge .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
-.gauge .mid b{font-family:var(--f-d);font-weight:700;font-size:42px;line-height:1;letter-spacing:-2px}
-.gauge .mid b i{font-style:normal;font-size:17px;opacity:.75;letter-spacing:0}
-.gauge .mid span{display:block;font-size:11.5px;opacity:.8;letter-spacing:1.6px;margin-top:2px;
-  font-family:var(--f-d)}
-.hero .info{flex:1;min-width:210px}
+.gauge .mid{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center}
+.gauge .mid b{font-family:var(--f-d);font-weight:700;font-size:40px;line-height:1;letter-spacing:-2px}
+.gauge .mid b i{font-style:normal;font-size:17px;opacity:.8;letter-spacing:0}
+.gauge .mid span{font-size:12px;opacity:.85;letter-spacing:1.4px;margin-top:4px;font-family:var(--f-d)}
+.hero .info{flex:1;min-width:230px}
 .hero .info h4{margin:0 0 3px;font-family:var(--f-d);font-weight:600;font-size:20px}
-.hero .info p{margin:0 0 14px;font-size:14px;opacity:.85}
-.chips-hero{display:flex;gap:9px;flex-wrap:wrap}
-.chip-hero{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
-  border-radius:14px;padding:9px 15px;min-width:96px;backdrop-filter:blur(6px);transition:.18s}
-.chip-hero:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
-.chip-hero b{display:block;font-family:var(--f-d);font-weight:600;font-size:23px;line-height:1.15}
-.chip-hero span{font-size:12.5px;opacity:.85}
-.hero .trace{width:100%;height:64px;margin-top:14px;position:relative;z-index:2;display:block}
-.hero .trace .done{fill:none;stroke:#C6FFE9;stroke-width:2.2;stroke-linejoin:round;
-  stroke-linecap:round;filter:drop-shadow(0 0 6px rgba(198,255,233,.7))}
-.hero .trace .todo{fill:none;stroke:rgba(255,255,255,.42);stroke-width:1.6;stroke-dasharray:5 6}
-.pulse{position:absolute;width:9px;height:9px;border-radius:50%;background:#C6FFE9;
-  box-shadow:0 0 12px #C6FFE9;z-index:3;pointer-events:none}
-
+.hero .info p{margin:0 0 14px;font-size:14.5px;opacity:.9}
+.chips-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px}
+.chip-hero{background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.3);
+  border-radius:13px;padding:9px 13px;transition:.18s}
+.chip-hero:hover{background:rgba(255,255,255,.27)}
+.chip-hero b{display:block;font-family:var(--f-d);font-weight:600;font-size:22px;line-height:1.2}
+.chip-hero span{font-size:12.5px;opacity:.88}
+.hero .trace{display:block;width:100%;height:56px;margin-top:16px;position:relative;z-index:2}
+.hero .trace .done{fill:none;stroke:#C6FFE9;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.hero .trace .todo{fill:none;stroke:rgba(255,255,255,.45);stroke-width:1.6;stroke-dasharray:5 6}
 
 .bento{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
@@ -496,9 +485,6 @@ select.inp{appearance:none;padding-right:38px;
       <div class="row">
         <div class="gauge">
           <svg viewBox="0 0 120 120">
-            <defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#C6FFE9"/><stop offset="1" stop-color="#FFE8A3"/>
-            </linearGradient></defs>
             <circle class="bgc" cx="60" cy="60" r="50"/>
             <circle class="fgc" id="gaugeArc" cx="60" cy="60" r="50"
                     stroke-dasharray="314" stroke-dashoffset="314"/>
@@ -515,7 +501,6 @@ select.inp{appearance:none;padding-right:38px;
         </div>
       </div>
       <svg class="trace" id="trace" viewBox="0 0 600 64" preserveAspectRatio="none"></svg>
-      <div class="pulse" id="pulse" style="display:none"></div>
     </div>
 
     <div class="kpis" id="kpis"></div>
@@ -1230,25 +1215,6 @@ function drawTrace(pct){
   if(on<beats) todo=`M${(on*bw).toFixed(1)},${mid} L${W},${mid}`;
   $('#trace').innerHTML=`<path class="done" d="${done}"/>`+
     (todo?`<path class="todo" d="${todo}"/>`:'');
-  movePulse(on/beats);
-}
-
-/* จุดเรืองแสงวิ่งไปตามความคืบหน้า */
-let pulseTimer=null;
-function movePulse(frac){
-  const dot=$('#pulse'), sv=$('#trace');
-  if(!dot||!sv) return;
-  clearInterval(pulseTimer);
-  if(frac<=0){ dot.style.display='none'; return; }
-  const box=sv.getBoundingClientRect(), host=sv.parentElement.getBoundingClientRect();
-  const top=box.top-host.top+box.height/2-4;
-  dot.style.display='block'; dot.style.top=top+'px';
-  let t=0;
-  pulseTimer=setInterval(()=>{
-    t=(t+0.012)%1;
-    dot.style.left=(box.left-host.left+box.width*frac*t)+'px';
-    dot.style.opacity=(0.25+0.75*Math.sin(t*Math.PI)).toFixed(2);
-  },40);
 }
 
 /* ═════════ ทะเบียน ═════════ */
