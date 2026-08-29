@@ -866,16 +866,25 @@ function jsonp(params){
     document.head.appendChild(s);
   });
 }
+/* ทุกคำสั่งที่เขียนข้อมูลจะแนบรหัสครั้งเดียว (nonce) ไปด้วย
+   ถ้าจำเป็นต้องส่งซ้ำ เซิร์ฟเวอร์จะรู้ว่าเป็นคำสั่งเดิมและไม่บันทึกซ้ำ */
+function newNonce(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
 async function api(action,params){
   if(!S.api) throw new Error('ยังไม่ได้ตั้งค่า URL ของ Web App');
-  const p=Object.assign({action,pin:S.pin},params||{});
+  const p=Object.assign({action,pin:S.pin,nonce:newNonce()},params||{});
+  let d=null;
   try{
     const r=await fetch(S.api,{method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)});
-    const d=await r.json();
-    if(!d.ok) throw new Error(d.error||'บันทึกไม่สำเร็จ');
-    return d;
-  }catch(e){ return jsonp(p); }
+    d=await r.json();
+  }catch(e){
+    /* ส่งซ้ำเฉพาะกรณีที่ไม่ได้รับคำตอบกลับมาเลย */
+    d=await jsonp(p);
+  }
+  if(!d||!d.ok) throw new Error((d&&d.error)||'บันทึกไม่สำเร็จ');
+  return d;
 }
 
 /* ═════════ นำทาง ═════════ */
