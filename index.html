@@ -473,8 +473,17 @@ select.inp{appearance:none;padding-right:38px;
       <input class="inp" id="manualCode" placeholder="หรือพิมพ์เลขครุภัณฑ์" style="flex:1;min-width:190px">
       <button class="btn" onclick="findByCode(manualCode.value)">ค้นหา</button>
     </div>
+    <div class="tools">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="inp" id="ckQ" placeholder="ค้นชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือจุดวาง"></label>
+      <select class="inp" id="ckOwner" style="min-width:220px">
+        <option value="">ทุกผู้รับผิดชอบ</option></select>
+      <select class="inp" id="ckCat"><option value="">ทุกประเภท</option>
+        <option value="med">ทางการแพทย์</option><option value="off">สำนักงาน</option></select>
+    </div>
     <div class="card" style="margin-bottom:18px">
-      <div class="stat"><span>ตรวจแล้วเดือนนี้</span><b id="ckDone">0 / 0</b></div>
+      <div class="stat"><span id="ckLabel">ตรวจแล้วเดือนนี้</span><b id="ckDone">0 / 0</b></div>
       <div class="meter"><i id="ckMeter" style="width:0%"></i></div>
       <div class="field" style="margin:16px 0 0"><label>ผู้ตรวจ</label>
         <select class="inp" id="inspector" style="max-width:360px"></select></div>
@@ -608,7 +617,7 @@ const S = {
   by: store.get('kp.by') || '',
   pin: store.get('kp.pin') || '',
   items:[], checks:[], fixes:[], staff:[], month:'',
-  filter:'all', ckTab:'todo', fxTab:'open', shown:24, pickShown:36,
+  filter:'all', ckTab:'todo', fxTab:'open', shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
@@ -800,6 +809,7 @@ function apply(d){
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
   fillSelect('#fOwner',d.owners,'ทุกผู้รับผิดชอบ');
   fillSelect('#sOwner',d.owners,'ทุกผู้รับผิดชอบ');
+  fillSelect('#ckOwner',d.owners,'ทุกผู้รับผิดชอบ');
   fillLookup(); buildMonths();
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
@@ -1282,31 +1292,59 @@ async function submitCheck(){
 /* ═════════ หน้าตรวจ ═════════ */
 $$('[data-ck]').forEach(b=>b.onclick=()=>{
   $$('[data-ck]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.ckTab=b.dataset.ck; renderCheck();
+  b.classList.add('on'); S.ckTab=b.dataset.ck; S.ckShown=40; renderCheck();
 });
+['#ckQ','#ckOwner','#ckCat'].forEach(sel=>
+  $(sel).addEventListener('input',()=>{S.ckShown=40;renderCheck();}));
 $('#inspector').addEventListener('change',e=>{
   S.by=e.target.value.trim(); store.set('kp.by',S.by);
   if(S.by) toast('ผู้ตรวจ: '+S.by,'good');
 });
 function renderCheck(){
-  const cm=checkMap(), live=S.items.filter(ALIVE);
-  const done=live.filter(i=>cm[key(i)]), todo=live.filter(i=>!cm[key(i)]);
-  const p=live.length?Math.round(done.length/live.length*100):0;
-  $('#checkSub').textContent=`รอบ ${thMonth(S.month)} · สแกน QR บนสติ๊กเกอร์ หรือเลือกจากรายการค้างตรวจ`;
-  $('#ckDone').textContent=`${done.length} / ${live.length}`;
+  const cm=checkMap();
+  const q=$('#ckQ').value.trim().toLowerCase();
+  const ow=$('#ckOwner').value, ct=$('#ckCat').value;
+  const filtered=(ow||ct);
+
+  const scope=S.items.filter(i=>{
+    if(!ALIVE(i)) return false;
+    if(ow&&i.owner!==ow) return false;
+    if(ct&&i.cat!==ct) return false;
+    return true;
+  });
+  const done=scope.filter(i=>cm[key(i)]), todo=scope.filter(i=>!cm[key(i)]);
+  const p=scope.length?Math.round(done.length/scope.length*100):0;
+
+  $('#checkSub').textContent=`รอบ ${thMonth(S.month)} · สแกน QR บนสติ๊กเกอร์ `+
+    `หรือค้นหาจากชื่อครุภัณฑ์และผู้รับผิดชอบด้านล่าง`;
+  $('#ckLabel').textContent = filtered
+    ? 'ตรวจแล้วเดือนนี้ (เฉพาะที่กรองไว้)' : 'ตรวจแล้วเดือนนี้ (ทั้งหน่วยงาน)';
+  $('#ckDone').textContent=`${done.length} / ${scope.length}`;
   $('#ckMeter').style.width=p+'%';
-  const list=S.ckTab==='done'?done:todo;
-  $('#checkList').innerHTML=list.length?list.slice(0,60).map(i=>{
+
+  /* คำค้นใช้กรองเฉพาะรายการที่แสดง ไม่กระทบตัวเลขความคืบหน้า */
+  const match=i=>!q||[i.name,i.code,i.ref,i.owner,i.loc].join(' ').toLowerCase().includes(q);
+  const list=(S.ckTab==='done'?done:todo).filter(match);
+  const page=list.slice(0,S.ckShown);
+
+  $('#checkList').innerHTML = list.length ? page.map(i=>{
     const c=cm[key(i)],u=imgUrl(i.img);
     return `<button class="row" data-k="${esc(key(i))}">
       ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
         :`<div class="thumb"></div>`}
-      <div class="mid"><b>${esc(i.name)}</b><span>${esc(i.code)} · ${esc(i.owner||'—')}</span></div>
+      <div class="mid"><b>${esc(i.name)}</b>
+        <span>${esc(i.code)} · ${esc(i.owner||'—')}${i.loc?' · '+esc(i.loc):''}</span></div>
       ${c?`<span class="tag ${c.result==='ปกติ'?'t-ok':'t-bad'}">${esc(c.result)}</span>`
         :`<span class="tag t-warn">ตรวจ</span>`}</button>`;
-  }).join('')
-   :`<div class="empty"><b>${S.ckTab==='done'?'ยังไม่มีรายการที่ตรวจ':'ตรวจครบทุกรายการแล้ว'}</b>
-      ${S.ckTab==='done'?'เริ่มตรวจโดยสแกน QR บนสติ๊กเกอร์':'รอบเดือนนี้เรียบร้อย'}</div>`;
+  }).join('') + (list.length>S.ckShown
+    ? `<button class="btn" style="justify-content:center;padding:14px"
+        onclick="S.ckShown+=40;renderCheck()">แสดงเพิ่ม (เหลืออีก ${list.length-S.ckShown} รายการ)</button>`
+    : '')
+   : `<div class="empty"><b>${q||filtered
+        ? 'ไม่พบรายการที่ตรงกับที่ค้น'
+        : (S.ckTab==='done'?'ยังไม่มีรายการที่ตรวจ':'ตรวจครบทุกรายการแล้ว')}</b>
+      ${q||filtered?'ลองล้างคำค้นหรือเปลี่ยนตัวกรอง'
+        :(S.ckTab==='done'?'เริ่มตรวจโดยสแกน QR บนสติ๊กเกอร์':'รอบเดือนนี้เรียบร้อย')}</div>`;
   $$('#checkList .row').forEach(el=>el.onclick=()=>openCheck(el.dataset.k));
 }
 function findByCode(code){
