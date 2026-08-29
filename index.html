@@ -7,10 +7,12 @@
 <meta name="theme-color" content="#F7F3FF">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:ital,wght@0,400;0,600;0,700;1,600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="preload" as="style"
+  href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Sarabun:wght@400;600;700&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+  href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Sarabun:wght@400;600;700&display=swap">
+<noscript><link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Sarabun:wght@400;600;700&display=swap"></noscript>
 <style>
 /* ══════════ โทนสว่าง · ม่วงหรู ══════════ */
 :root{
@@ -773,6 +775,7 @@ select.inp{appearance:none;padding-right:38px;
       <div class="tools">
         <button class="btn pri" onclick="saveSetup()">บันทึกการตั้งค่า</button>
         <button class="btn" onclick="testConn()">ทดสอบการเชื่อมต่อ</button>
+        <button class="btn" onclick="speedTest()">ตรวจความเร็วการโหลด</button>
         <button class="btn" onclick="rebuildIndex()">สร้างดัชนีรูปภาพใหม่</button>
       </div>
       <div id="diag" class="note" style="margin-top:14px"></div>
@@ -840,7 +843,7 @@ const S = {
   pin: '',
   items:[], checks:[], fixes:[], loans:[], staff:[], roles:{}, ward:null, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', shown:24, pickShown:36, ckShown:40,
-  sel:new Set(), layout:24, zoom:.6, scanMode:'check'
+  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                 'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -904,6 +907,29 @@ function toast(msg,kind){
   const t=$('#toast'); t.textContent=msg; t.className='on '+(kind||'');
   clearTimeout(t._t); t._t=setTimeout(()=>t.className='',3200);
 }
+
+/* ───── โหลดสคริปต์เสริมเฉพาะตอนที่ต้องใช้จริง ─────
+   ตัวอ่าน QR หนักราว 350 KB จึงไม่ควรโหลดตั้งแต่เปิดหน้าเว็บ */
+const LIB={
+  qr  :'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+  scan:'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
+};
+const _lib={};
+function needLib(k){
+  if(_lib[k]) return _lib[k];
+  _lib[k]=new Promise((res,rej)=>{
+    const el=document.createElement('script');
+    el.src=LIB[k]; el.async=true;
+    el.onload=()=>res(true);
+    el.onerror=()=>{ _lib[k]=null; rej(new Error('โหลดส่วนเสริมไม่สำเร็จ ตรวจการเชื่อมต่ออินเทอร์เน็ต')); };
+    document.head.appendChild(el);
+  });
+  return _lib[k];
+}
+/* โหลดล่วงหน้าแบบเงียบ ๆ หลังหน้าเว็บพร้อมแล้ว จะได้กดใช้ได้ทันที */
+window.addEventListener('load',()=>{
+  setTimeout(()=>{ needLib('qr').catch(()=>{}); needLib('scan').catch(()=>{}); }, 2500);
+});
 
 /* ═════════ API ═════════ */
 function jsonp(params){
@@ -997,6 +1023,39 @@ function saveSetup(){
   $('#inspector').value=S.by;
   toast('บันทึกการตั้งค่าแล้ว','good');
 }
+/* วัดว่าเวลาที่ใช้หมดไปกับอะไร เพื่อหาสาเหตุที่โหลดช้า */
+async function speedTest(){
+  const d=$('#diag');
+  d.innerHTML='กำลังวัด…';
+  const L=[];
+  try{
+    const nav=performance.getEntriesByType('navigation')[0];
+    if(nav){
+      L.push('ดาวน์โหลดหน้าเว็บ '+Math.round(nav.responseEnd-nav.startTime)+' ms');
+      L.push('แสดงผลครั้งแรก '+Math.round(nav.domContentLoadedEventEnd-nav.startTime)+' ms');
+    }
+    const t0=performance.now();
+    await jsonp({action:'ping'});
+    L.push('ตอบกลับจากเซิร์ฟเวอร์ '+Math.round(performance.now()-t0)+' ms');
+
+    const t1=performance.now();
+    const b=await jsonp({action:'bootstrap',month:S.month});
+    const ms=Math.round(performance.now()-t1);
+    const kb=Math.round(JSON.stringify(b).length/1024);
+    L.push('ดึงข้อมูลทั้งหมด '+ms+' ms · ขนาด '+kb+' KB · '+b.items.length+' รายการ');
+    L.push(ms<1200?'ใช้ข้อมูลที่พักไว้ในเซิร์ฟเวอร์ (เร็ว)'
+                  :'อ่านจากชีตใหม่ (ช้ากว่าปกติ ครั้งถัดไปจะเร็วขึ้น)');
+
+    const snap=store.get('kp.snap');
+    L.push('ข้อมูลสำรองในเครื่อง '+(snap?Math.round(snap.length/1024)+' KB':'ยังไม่มี'));
+    const imgs=S.items.filter(x=>x.img).length;
+    L.push('รูปครุภัณฑ์ที่ต้องโหลดจาก Drive '+imgs+' รูป (โหลดเมื่อเลื่อนถึงเท่านั้น)');
+    d.innerHTML='<b style="color:var(--plum)">ผลการตรวจ</b><br>'+L.join('<br>');
+  }catch(e){
+    d.innerHTML='<b style="color:var(--bad)">วัดไม่สำเร็จ: '+esc(e.message)+'</b><br>'+L.join('<br>');
+  }
+}
+
 async function testConn(){
   const d=$('#diag');
   const url=$('#setUrl').value.trim();
@@ -1863,29 +1922,56 @@ function showImageSaver(url, filename){
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
-/** วาดกล่อง HTML ที่ซ่อนอยู่ในหน้าพิมพ์ ให้กลายเป็นรูป PNG */
-async function nodeToPng(node, filename){
-  if(typeof html2canvas==='undefined')
-    return toast('โหลดตัวแปลงรูปไม่สำเร็จ ลองเชื่อมอินเทอร์เน็ตแล้วรีเฟรช','bad');
-  busyOn('กำลังสร้างรูปภาพ…');
-  const host=$('#printRoot');
-  const keep=host.getAttribute('style')||'';
-  host.setAttribute('style','display:block;position:fixed;left:-20000px;top:0;'+
-                            'background:#fff;z-index:-1;pointer-events:none');
-  try{
-    if(document.fonts && document.fonts.ready) await document.fonts.ready;
-    const canvas=await html2canvas(node,{scale:2,backgroundColor:'#ffffff',
-      useCORS:true,logging:false,windowWidth:node.scrollWidth});
-    const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
-    if(!blob) throw new Error('แปลงรูปไม่สำเร็จ');
-    await saveBlob(blob, filename);
-  }catch(e){
-    toast('สร้างรูปไม่สำเร็จ: '+(e.message||e),'bad');
-  }finally{
-    host.setAttribute('style',keep);
-    busyOff();
-  }
+/* ───── เครื่องมือวาดรูปด้วย Canvas โดยไม่ต้องพึ่งไลบรารีภายนอก ───── */
+const DPI = 150;                 // ความละเอียดงานพิมพ์
+const PX  = DPI / 25.4;          // พิกเซลต่อมิลลิเมตร
+const PT  = PX / 2.8346;         // พิกเซลต่อพอยต์
+
+function newPage(wMM, hMM){
+  const c = document.createElement('canvas');
+  c.width  = Math.round(wMM * PX);
+  c.height = Math.round(hMM * PX);
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.textBaseline = 'top';
+  return { c, g };
 }
+function font(g, pt, weight, family){
+  g.font = `${weight||400} ${(pt*PT).toFixed(1)}px ${family||'Sarabun'}, sans-serif`;
+}
+function clip(g, txt, maxW){
+  txt = String(txt==null?'':txt);
+  if(g.measureText(txt).width <= maxW) return txt;
+  let t = txt;
+  while(t.length > 1 && g.measureText(t+'…').width > maxW) t = t.slice(0,-1);
+  return t + '…';
+}
+function roundRect(g, x, y, w, h, r){
+  g.beginPath();
+  g.moveTo(x+r, y);
+  g.arcTo(x+w, y,   x+w, y+h, r);
+  g.arcTo(x+w, y+h, x,   y+h, r);
+  g.arcTo(x,   y+h, x,   y,   r);
+  g.arcTo(x,   y,   x+w, y,   r);
+  g.closePath();
+}
+function loadImg(src){
+  return new Promise(res=>{
+    if(!src) return res(null);
+    const im=new Image();
+    im.crossOrigin='anonymous';
+    im.onload=()=>res(im); im.onerror=()=>res(null);
+    im.src=src;
+  });
+}
+function canvasBlob(c){
+  return new Promise(res=>c.toBlob(res,'image/png'));
+}
+async function readyFonts(){
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+}
+
 const safeName = t => String(t).replace(/[\/\\?%*:|"<>]/g,'-').trim();
 
 /* ═════════ ใบสรุปรายการของผู้รับผิดชอบ ═════════ */
@@ -1954,11 +2040,153 @@ function printOwnerReport(){
   setTimeout(()=>window.print(),150);
 }
 async function imageOwnerReport(){
-  const r=buildOwnerReport(); if(!r) return;
+  const ow=$('#rpOwner').value;
+  if(!ow) return toast('กรุณาเลือกผู้รับผิดชอบ','bad');
+  const rows=rpRows();
+  if(!rows.length) return toast('ไม่พบครุภัณฑ์ของผู้รับผิดชอบคนนี้','bad');
+  const showPrice=$('#rpPrice').checked, showCheck=$('#rpCheck').checked;
+  const alive=$('#rpAlive').checked;
   closeSheet();
-  toast('กำลังสร้างรูปภาพ…');
-  await nodeToPng($('#printRoot').querySelector('.report'),
-    safeName('ครุภัณฑ์ '+r.owner+' '+thMonth(S.month))+'.png');
+  busyOn('กำลังสร้างรูปภาพ…');
+  try{
+    await readyFonts();
+    const pages=await reportCanvases(ow, rows, showPrice, showCheck, alive);
+    for(let i=0;i<pages.length;i++){
+      const blob=await canvasBlob(pages[i]);
+      await saveBlob(blob, safeName('ครุภัณฑ์ '+ow+' '+thMonth(S.month)+
+        (pages.length>1?' หน้า'+(i+1):''))+'.png');
+    }
+  }catch(e){ toast('สร้างรูปไม่สำเร็จ: '+(e.message||e),'bad'); }
+  finally{ busyOff(); }
+}
+
+/** วาดใบสรุปครุภัณฑ์รายบุคคลลงบนกระดาษ A4 แบ่งหน้าอัตโนมัติถ้ายาวเกิน */
+async function reportCanvases(ow, rows, showPrice, showCheck, alive){
+  const cm=checkMap();
+  const logo=await loadImg(($('#brandLogo')||{}).src||'');
+  const M=11, MB=9;                        // ขอบซ้ายขวา / ล่าง
+  const W=210, H=297, IW=W-M*2;
+
+  const cols=[['ลำดับ',.06,'c'],['ชื่อครุภัณฑ์',.31,'l'],['หมายเลขครุภัณฑ์',.20,'l'],
+              ['จุดวาง',.13,'l'],['สถานะ',.10,'c']];
+  if(showPrice) cols.push(['ราคา (บาท)',.11,'r']);
+  if(showCheck) cols.push(['ผลตรวจ',.09,'c']);
+  const wsum=cols.reduce((a,c)=>a+c[1],0);
+  cols.forEach(c=>c[1]=c[1]/wsum*IW);
+
+  const headH=22, whoH=13, sumH=showCheck?30:15;
+  const bodyTop=M+headH+whoH+2;
+  const bodyBottom=H-MB-sumH;
+  const avail=bodyBottom-bodyTop;
+
+  const rowH=Math.max(4.0, Math.min(8.5, avail/(rows.length+1.4)));
+  const fs=Math.max(5.4, Math.min(11, rowH*2.8346*0.55));
+  const perPage=Math.max(1, Math.floor((avail-rowH)/rowH));
+  const nPages=Math.ceil(rows.length/perPage);
+
+  const done=rows.filter(i=>chk(cm,i)).length;
+  const bad=rows.filter(i=>i.status==='ชำรุด'||i.status==='ไม่พบ').length;
+  const val=rows.reduce((a,i)=>a+(Number(i.price)||0),0);
+  const today=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+
+  const out=[];
+  for(let pg=0; pg<nPages; pg++){
+    const {c,g}=newPage(W,H);
+    let y=M;
+
+    /* หัวใบ */
+    if(logo){
+      const h=16, w=h*logo.width/logo.height;
+      g.drawImage(logo, M*PX, y*PX, w*PX, h*PX);
+    }
+    const tx=M+(logo?20:0);
+    g.fillStyle='#4E2C82'; font(g,15,600,'Prompt');
+    g.fillText('ทะเบียนครุภัณฑ์ในความรับผิดชอบ', tx*PX, (y+1)*PX);
+    g.fillStyle='#444444'; font(g,9.5,400);
+    g.fillText('หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10 · โรงพยาบาลมหาราชนครราชสีมา',
+               tx*PX, (y+8)*PX);
+    g.textAlign='right'; font(g,9,400);
+    g.fillText('รอบตรวจ '+thMonth(S.month), (W-M)*PX, (y+1)*PX);
+    g.fillText('พิมพ์เมื่อ '+today, (W-M)*PX, (y+6)*PX);
+    if(nPages>1) g.fillText('หน้า '+(pg+1)+'/'+nPages, (W-M)*PX, (y+11)*PX);
+    g.textAlign='left';
+
+    y+=headH-4;
+    g.fillStyle='#6B3FA0';
+    g.fillRect(M*PX, y*PX, IW*PX, 0.6*PX);
+    y+=2.5;
+
+    /* แถบชื่อผู้รับผิดชอบ */
+    g.fillStyle='#F1E9FC';
+    roundRect(g, M*PX, y*PX, IW*PX, 10*PX, 2.5*PX); g.fill();
+    g.fillStyle='#4E2C82'; font(g,13,600,'Prompt');
+    g.fillText(clip(g,ow,IW*0.6*PX), (M+4)*PX, (y+2.2)*PX);
+    g.fillStyle='#3F3556'; font(g,9,400);
+    g.textAlign='right';
+    g.fillText('ครุภัณฑ์ในความรับผิดชอบ '+rows.length+' รายการ'+
+               (alive?' (ไม่รวมแทงจำหน่าย)':''), (W-M-4)*PX, (y+3.2)*PX);
+    g.textAlign='left';
+    y+=whoH;
+
+    /* หัวตาราง */
+    const drawRow=(vals, fill, bold)=>{
+      let x=M;
+      cols.forEach((col,ci)=>{
+        g.fillStyle=fill; g.fillRect(x*PX, y*PX, col[1]*PX, rowH*PX);
+        g.strokeStyle='#B9A6DB'; g.lineWidth=Math.max(1,0.25*PX);
+        g.strokeRect(x*PX, y*PX, col[1]*PX, rowH*PX);
+        g.fillStyle = bold ? '#4E2C82' : '#111111';
+        font(g, fs, bold?600:400, bold?'Prompt':'Sarabun');
+        const pad=1.4, inner=(col[1]-pad*2)*PX;
+        const t=clip(g, vals[ci], inner);
+        const ty=(y+(rowH-fs/2.8346*1.25)/2)*PX;
+        if(col[2]==='c'){ g.textAlign='center'; g.fillText(t,(x+col[1]/2)*PX,ty); }
+        else if(col[2]==='r'){ g.textAlign='right'; g.fillText(t,(x+col[1]-pad)*PX,ty); }
+        else { g.textAlign='left'; g.fillText(t,(x+pad)*PX,ty); }
+        g.textAlign='left';
+        x+=col[1];
+      });
+      y+=rowH;
+    };
+    drawRow(cols.map(c=>c[0]), '#EFE6FB', true);
+
+    rows.slice(pg*perPage,(pg+1)*perPage).forEach((it,k)=>{
+      const c2=chk(cm,it);
+      const v=[String(pg*perPage+k+1), it.name, it.code, it.loc||'—', it.status];
+      if(showPrice) v.push(it.price?baht(it.price):'—');
+      if(showCheck) v.push(c2?c2.result:'—');
+      drawRow(v, (k%2)?'#FBF8FF':'#FFFFFF', false);
+    });
+
+    /* สรุปและช่องเซ็น เฉพาะหน้าสุดท้าย */
+    if(pg===nPages-1){
+      y+=3;
+      g.fillStyle='#4E2C82'; font(g,9.5,600,'Prompt');
+      let line='ทั้งหมด '+rows.length+' รายการ';
+      if(showCheck) line+='   ตรวจแล้ว '+done+'   ค้างตรวจ '+(rows.length-done);
+      line+='   ชำรุด/ไม่พบ '+bad;
+      if(showPrice) line+='   มูลค่ารวม '+baht(val)+' บาท';
+      g.fillText(line, M*PX, y*PX);
+
+      if(showCheck){
+        const sy=H-MB-16;
+        g.strokeStyle='#666666'; g.lineWidth=Math.max(1,0.25*PX);
+        g.setLineDash([2*PX,2*PX]);
+        [[M+12,IW*0.34],[M+IW*0.56,IW*0.34]].forEach(([sx,sw])=>{
+          g.beginPath(); g.moveTo(sx*PX,sy*PX); g.lineTo((sx+sw)*PX,sy*PX); g.stroke();
+        });
+        g.setLineDash([]);
+        g.fillStyle='#333333'; font(g,9,400); g.textAlign='center';
+        g.fillText('( '+clip(g,ow,IW*0.3*PX)+' )', (M+12+IW*0.17)*PX, (sy+2)*PX);
+        g.fillText('ผู้รับผิดชอบครุภัณฑ์',       (M+12+IW*0.17)*PX, (sy+7)*PX);
+        g.fillText('(.............................)', (M+IW*0.56+IW*0.17)*PX, (sy+2)*PX);
+        g.fillText('หัวหน้าหอผู้ป่วย',            (M+IW*0.56+IW*0.17)*PX, (sy+7)*PX);
+        g.textAlign='left';
+      }
+    }
+    out.push(c);
+  }
+  return out;
 }
 
 function buildOwnerReport(){
@@ -2224,7 +2452,9 @@ function openScan(mode){
         ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ถ้ามีงานซ่อมค้างอยู่จะเปิดรายละเอียดงานนั้น '+
           'ถ้ายังไม่มี จะเปิดฟอร์มแจ้งส่งซ่อม'
         : 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดฟอร์มตรวจให้อัตโนมัติ'}</div></div>`;
-  $('#scrim').classList.add('on'); setTimeout(startScan,220);
+  $('#scrim').classList.add('on');
+  needLib('scan').then(()=>setTimeout(startScan,120))
+    .catch(e=>toast(e.message,'bad'));
 }
 function startScan(){
   if(typeof Html5Qrcode==='undefined') return toast('โหลดตัวสแกนไม่สำเร็จ','bad');
@@ -2686,7 +2916,6 @@ async function submitFix(k){
       doc:$('#fxDoc').value.trim(),by:$('#fxBy').value.trim()});
     S.fixes=d.fixes||S.fixes;
     i.status = st==='รอซ่อมเวลาราชการ' ? 'รอซ่อม' : 'ส่งซ่อม';
-    i.fixFlag='มี';
     if(file && d.row){
       try{
         const data=await fileToJpeg(file,1800,.85);
@@ -2860,14 +3089,132 @@ function updatePickCount(){
     : 'ยังไม่ได้เลือก — กดปุ่มเลือกทั้งหมด หรือแตะที่รูปด้านล่างทีละชิ้น';
 }
 async function saveStickerImages(){
-  const pages=$('#printRoot').querySelectorAll('.sheetbox');
-  if(!pages.length) return toast('กด “สร้างสติ๊กเกอร์” ก่อน','bad');
-  if($('#previewWrap').querySelector('.qr canvas'))
-    return toast('QR ยังสร้างไม่เสร็จ รออีกสักครู่','bad');
-  for(let i=0;i<pages.length;i++){
-    toast('กำลังสร้างรูปแผ่นที่ '+(i+1)+' จาก '+pages.length+'…');
-    await nodeToPng(pages[i], 'สติ๊กเกอร์ครุภัณฑ์-แผ่น'+(i+1)+'.png');
-  }
+  if(!S.stk||!S.stk.items.length) return toast('กด “สร้างสติ๊กเกอร์” ก่อน','bad');
+  busyOn('กำลังสร้างรูปภาพ…');
+  try{
+    await readyFonts();
+    const logo=S.stk.opts.showLogo ? await loadImg(($('#brandLogo')||{}).src||'') : null;
+    const qrs=await Promise.all(S.stk.qr.map(u=>loadImg(u)));
+    const per=S.stk.G.per, n=Math.ceil(S.stk.items.length/per);
+    for(let p=0;p<n;p++){
+      busyOn('กำลังสร้างรูปแผ่นที่ '+(p+1)+' จาก '+n+'…');
+      const c=stickerCanvas(p, logo, qrs);
+      const blob=await canvasBlob(c);
+      await saveBlob(blob, 'สติ๊กเกอร์ครุภัณฑ์-แผ่น'+(p+1)+'.png');
+    }
+  }catch(e){ toast('สร้างรูปไม่สำเร็จ: '+(e.message||e),'bad'); }
+  finally{ busyOff(); }
+}
+
+/** วาดสติ๊กเกอร์หนึ่งแผ่นลงบนกระดาษ A4 ตามผังเดียวกับตอนพิมพ์ */
+function stickerCanvas(pg, logo, qrs){
+  const K=S.stk, G=K.G, L=G.L, o=K.opts, per=G.per;
+  const slice=K.items.slice(pg*per,(pg+1)*per);
+  const rowsUsed=Math.ceil(slice.length/G.cols);
+  const pageH = (o.trim && rowsUsed<G.rows)
+    ? G.PAD*2 + rowsUsed*G.rowH + G.GAP*Math.max(0,rowsUsed-1) : 297;
+  const {c,g}=newPage(210, pageH);
+  const VPp=L.ipad*0.5;
+
+  slice.forEach((it,k)=>{
+    const cx=k%G.cols, cy=Math.floor(k/G.cols);
+    const x=G.PAD+cx*(G.cellW+G.GAP), y=G.PAD+cy*(G.rowH+G.GAP);
+    const w=G.cellW, h=G.rowH;
+
+    /* กรอบ */
+    g.save();
+    roundRect(g, x*PX, y*PX, w*PX, h*PX, 2.6*PX);
+    g.strokeStyle = o.cut ? '#D8CBEE' : '#8E6FCB';
+    g.lineWidth   = 0.55*PX;
+    if(o.cut) g.setLineDash([1.6*PX,1.2*PX]);
+    g.stroke(); g.setLineDash([]);
+    g.clip();
+
+    /* ลายน้ำโลโก้ */
+    if(logo){
+      const lh=h*(K.style==='textShort'?0.62:0.52), lw=lh*logo.width/logo.height;
+      g.globalAlpha = K.style==='textShort' ? .10 : .13;
+      const lx = K.style==='textShort' ? x+(w-lw)/2 : x+w-lw-w*0.02;
+      g.drawImage(logo, lx*PX, (y+(h-lh)/2)*PX, lw*PX, lh*PX);
+      g.globalAlpha = 1;
+    }
+
+    const innerW=w-L.ipad*2, innerH=h-VPp*2;
+    const fit=(t,wMM,hMM,cap)=>Math.max(3.4,Math.min(
+      (wMM*2.8346)/(Math.max(1,String(t).length)*0.585), hMM*2.8346*0.66, cap||46));
+
+    if(K.style==='textShort'){
+      const nameOn=o.showName && it.name;
+      const fc=fit(it.code, innerW, nameOn?innerH*0.60:innerH, 54);
+      const fn=nameOn?Math.min(fc*0.52, fit(it.name, innerW, innerH*0.34, 22)):0;
+      const th=(fc + (nameOn?fn:0))/2.8346*1.15;
+      let ty=y+(h-th)/2;
+      g.textAlign='center';
+      g.fillStyle='#3F2270'; font(g,fc,700);
+      g.fillText(clip(g,it.code,innerW*PX), (x+w/2)*PX, ty*PX);
+      ty+=fc/2.8346*1.1;
+      if(nameOn){
+        g.fillStyle='#6B49A8'; font(g,fn,600);
+        g.fillText(clip(g,it.name,innerW*PX), (x+w/2)*PX, ty*PX);
+      }
+      g.textAlign='left'; g.restore(); return;
+    }
+
+    /* QR */
+    let tx=x+L.ipad, txW=innerW;
+    if(K.style==='qr'){
+      const qs=Math.min(L.qr, innerH);
+      const im=qrs[pg*per+k];
+      if(im) g.drawImage(im, (x+L.ipad)*PX, (y+(h-qs)/2)*PX, qs*PX, qs*PX);
+      tx += qs + L.ipad*0.85;
+      txW = innerW - qs - L.ipad*0.85;
+    }
+
+    /* ข้อความ จัดขนาดให้พอดีความสูงเหมือนตอนพิมพ์ */
+    const parts=[];
+    if(o.showWard && L.fw)  parts.push(['ward','TRAUMA MALE WARD', L.fw, false]);
+    parts.push(['code', it.code, L.fc, true]);
+    if(o.showName)  parts.push(['name', it.name, L.fn, true]);
+    if(o.showOwner) parts.push(['owner', it.owner||'—', L.fo, false]);
+
+    const LH=1.2, GAPmm=0.22, pill=L.ipad*0.16;
+    const nPill=parts.filter(p=>p[3]).length;
+    const budget=Math.max(2, innerH-GAPmm*(parts.length-1)-pill*2*nPill);
+    const kH=(budget*2.8346)/(parts.reduce((a,p)=>a+p[2],0)*LH);
+
+    const sizes=parts.map(p=>{
+      const usableW=txW-(p[3]?L.ipad*1.4:0);
+      const byW=(usableW*2.8346*0.97)/(Math.max(1,String(p[1]).length)*0.545);
+      return Math.max(3.4, Math.min(p[2]*kH, byW, 30));
+    });
+    const totalH=sizes.reduce((a,f,i2)=>a+f/2.8346*LH+(parts[i2][3]?pill*2:0),0)
+                 + GAPmm*(parts.length-1);
+    let ty=y+(h-totalH)/2;
+
+    parts.forEach((p,i2)=>{
+      const f=sizes[i2], lh=f/2.8346*LH;
+      if(p[0]==='ward'){
+        g.textAlign='right'; g.fillStyle='#8E6FCB'; font(g,f,600,'Prompt');
+        g.fillText(p[1], (tx+txW)*PX, ty*PX); ty+=lh+GAPmm;
+      } else if(p[3]){
+        font(g,f,p[0]==='code'?700:600);
+        const tw=Math.min(g.measureText(p[1]).width/PX+L.ipad*1.4, txW);
+        g.fillStyle = p[0]==='code' ? '#EFE6FB' : '#7B57B8';
+        roundRect(g, tx*PX, ty*PX, tw*PX, (lh+pill*2)*PX, (lh/2+pill)*PX); g.fill();
+        g.fillStyle = p[0]==='code' ? '#4E2C82' : '#FFFFFF';
+        g.textAlign='left';
+        g.fillText(clip(g,p[1],(tw-L.ipad*1.4)*PX), (tx+L.ipad*0.7)*PX, (ty+pill)*PX);
+        ty+=lh+pill*2+GAPmm;
+      } else {
+        g.textAlign='left'; g.fillStyle='#5E3D96';
+        g.font=`italic 600 ${(f*PT).toFixed(1)}px Sarabun, sans-serif`;
+        g.fillText(clip(g,p[1],txW*PX), tx*PX, ty*PX); ty+=lh+GAPmm;
+      }
+    });
+    g.textAlign='left';
+    g.restore();
+  });
+  return c;
 }
 function doPrint(){
   const pr=$('#printRoot');
@@ -2919,7 +3266,11 @@ function buildStickers(){
 
   const style=$('#stkStyle').value;          // qr | textLong | textShort
   const useQR=(style==='qr');
-  if(useQR && typeof QRCode==='undefined') return toast('โหลดตัวสร้าง QR ไม่สำเร็จ','bad');
+  if(useQR && typeof QRCode==='undefined'){
+    needLib('qr').then(()=>buildStickers())
+      .catch(e=>toast(e.message,'bad'));
+    return toast('กำลังเตรียมตัวสร้าง QR…');
+  }
 
   /* ทำซ้ำแต่ละชิ้นตามจำนวนที่ตั้งไว้ เรียงต่อกันไป */
   const copies=copiesNow(), chosen=[];
@@ -3053,6 +3404,12 @@ function buildStickers(){
   };
   const finish=()=>{
     flatten();
+    /* เก็บข้อมูลชุดนี้ไว้ ใช้ตอนสั่งบันทึกเป็นรูปภาพ */
+    S.stk={
+      items:chosen, G:G, style:style,
+      qr:Array.from(wrap.querySelectorAll('.qr img')).map(im=>im.src),
+      opts:{showName,showOwner,showWard,showIcon,showLogo,cut,trim}
+    };
     setTimeout(()=>{
       const cl=wrap.cloneNode(true);
       cl.removeAttribute('id'); cl.className='';
