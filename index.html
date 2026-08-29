@@ -782,11 +782,21 @@ select.inp{appearance:none;padding-right:38px;
       <div class="hr"></div>
       <h3>ตำแหน่งอ้างอิงของหน่วยงาน</h3>
       <div id="wardBox" class="note" style="margin-bottom:12px"></div>
-      <div class="field"><label>รัศมีที่ถือว่าอยู่ในพื้นที่ (เมตร)</label>
-        <input class="inp" id="wardR" type="number" min="20" max="1000" step="10"
-               style="max-width:160px"></div>
       <div class="tools">
-        <button class="btn pri" onclick="setWardHere()">ตั้งพิกัดจากตำแหน่งปัจจุบัน</button>
+        <label class="note">ละติจูด
+          <input class="inp" id="wardLat" inputmode="decimal"
+                 style="width:150px;padding:9px 12px;margin:0 6px"></label>
+        <label class="note">ลองจิจูด
+          <input class="inp" id="wardLng" inputmode="decimal"
+                 style="width:150px;padding:9px 12px;margin:0 6px"></label>
+        <label class="note">รัศมี
+          <input class="inp" id="wardR" type="number" min="20" max="2000" step="10"
+                 style="width:110px;padding:9px 12px;margin:0 6px"> เมตร</label>
+      </div>
+      <div class="tools">
+        <button class="btn pri" onclick="saveWardManual()">บันทึกพิกัดที่กรอก</button>
+        <button class="btn" onclick="setWardHere()">ใช้ตำแหน่งปัจจุบันแทน</button>
+        <a class="btn" id="wardMap" target="_blank" rel="noopener">เปิดดูบนแผนที่</a>
       </div>
       <p class="note" style="margin-top:10px">
         ยืนหน้าหอผู้ป่วยแล้วกดปุ่มนี้หนึ่งครั้ง ระบบจะจำพิกัดไว้เป็นจุดอ้างอิง
@@ -1015,6 +1025,10 @@ async function testConn(){
 function renderWard(){
   const w=S.ward||{};
   $('#wardR').value=w.radius||150;
+  $('#wardLat').value=w.lat||'';
+  $('#wardLng').value=w.lng||'';
+  $('#wardMap').href = w.lat
+    ? 'https://www.google.com/maps?q='+w.lat+','+w.lng : '#';
   $('#wardBox').innerHTML = w.lat
     ? `จุดอ้างอิงปัจจุบัน <b style="color:var(--plum)">${(+w.lat).toFixed(6)},
        ${(+w.lng).toFixed(6)}</b> · รัศมี ${w.radius||150} ม.` +
@@ -1022,6 +1036,22 @@ function renderWard(){
     : '<span style="color:var(--warn)">ยังไม่ได้ตั้งพิกัดหน่วยงาน</span>' +
       ' ระบบจะบันทึกพิกัดขณะตรวจไว้ แต่จะยังบอกไม่ได้ว่าอยู่ในพื้นที่หรือไม่';
 }
+/* กรอกพิกัดเองจากแผนที่ ใช้ได้แม้อยู่นอกหน่วยงาน */
+async function saveWardManual(){
+  const lat=parseFloat($('#wardLat').value), lng=parseFloat($('#wardLng').value);
+  if(!lat||!lng) return toast('กรุณากรอกละติจูดและลองจิจูดให้ครบ','bad');
+  if(lat<-90||lat>90||lng<-180||lng>180) return toast('ค่าพิกัดไม่ถูกต้อง','bad');
+  if(!S.pin){
+    const v=prompt('กรอกรหัสยืนยันการแก้ไข');
+    if(!v) return; S.pin=v.trim();
+  }
+  try{
+    const d=await api('setWard',{lat,lng,radius:$('#wardR').value,by:S.by});
+    S.ward=d.ward; renderWard();
+    toast('บันทึกพิกัดหน่วยงานแล้ว','good');
+  }catch(e){ toast(e.message,'bad'); }
+}
+
 async function setWardHere(){
   if(!S.pin){
     const v=prompt('กรอกรหัสยืนยันการแก้ไข');
