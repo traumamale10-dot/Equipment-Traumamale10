@@ -1808,7 +1808,12 @@ async function submitBulkOwner(){
 }
 
 /* ═════════ บันทึกเป็นไฟล์รูปภาพ ═════════ */
+const isIOS = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
 async function saveBlob(blob, filename){
+  /* 1) หน้าต่างแชร์ของเครื่อง — ทางที่บันทึกลงคลังภาพได้ตรงที่สุด */
   try{
     const file=new File([blob], filename, {type:blob.type||'image/png'});
     if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -1817,12 +1822,45 @@ async function saveBlob(blob, filename){
       return;
     }
   }catch(e){ if(e && e.name==='AbortError') return; }
+
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
-  toast('บันทึกไฟล์ '+filename+' แล้ว','good');
+
+  /* 2) คอมพิวเตอร์และแอนดรอยด์ ดาวน์โหลดไฟล์ได้ตรง ๆ */
+  if(!isIOS()){
+    const a=document.createElement('a');
+    a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),8000);
+    toast('บันทึกไฟล์ '+filename+' แล้ว','good');
+    return;
+  }
+
+  /* 3) iPhone/iPad ที่แชร์ไม่ได้ ให้แสดงรูปแล้วกดค้างเพื่อบันทึก */
+  showImageSaver(url, filename);
+}
+
+/* หน้าต่างสำรองสำหรับบันทึกรูปด้วยการกดค้าง */
+function showImageSaver(url, filename){
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>บันทึกรูปลงเครื่อง</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="note" style="margin-bottom:14px">
+        <b style="color:var(--plum)">กดค้างที่รูปด้านล่าง</b>
+        แล้วเลือก “บันทึกลงในรูปภาพ” หรือ “Add to Photos”
+        รูปจะไปอยู่ในแอปรูปภาพของเครื่อง</div>
+      <img src="${url}" alt="${esc(filename)}"
+           style="width:100%;border-radius:14px;border:1px solid var(--line);display:block">
+      <div class="tools" style="margin-top:16px">
+        <a class="btn pri" href="${url}" target="_blank" rel="noopener"
+           style="flex:1;justify-content:center">เปิดรูปในแท็บใหม่</a>
+        <button class="btn" onclick="closeSheet()">ปิด</button>
+      </div>
+      <div class="note" style="margin-top:12px">ถ้ากดค้างแล้วไม่มีเมนู
+        ให้กดเปิดรูปในแท็บใหม่ แล้วกดค้างที่รูปในแท็บนั้นแทน</div>
+    </div>`;
+  $('#scrim').classList.add('on');
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
 /** วาดกล่อง HTML ที่ซ่อนอยู่ในหน้าพิมพ์ ให้กลายเป็นรูป PNG */
@@ -1880,7 +1918,8 @@ function openOwnerReport(){
       </div>
       <div class="note" style="margin-top:12px">
         <b>บันทึกเป็นรูปภาพ</b> เหมาะกับมือถือ ระบบจะสร้างไฟล์ PNG แล้วเปิดหน้าต่างแชร์
-        ให้เลือก “บันทึกรูปภาพ” เพื่อเก็บลงคลังภาพ หรือส่งเข้า LINE ได้ทันที<br><br>
+        ให้เลือก “บันทึกรูปภาพ” เพื่อเก็บลงคลังภาพ หรือส่งเข้า LINE ได้ทันที
+        ถ้าเครื่องไม่รองรับการแชร์ ระบบจะแสดงรูปให้กดค้างเพื่อบันทึกแทน<br><br>
         <b>พิมพ์ / บันทึก PDF</b> ในหน้าต่างพิมพ์ให้เลือกปลายทางเป็นบันทึกเป็น PDF
         และเปิด กราฟิกพื้นหลัง เพื่อให้หัวตารางมีสี</div>
     </div>`;
