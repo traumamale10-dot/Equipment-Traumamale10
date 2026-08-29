@@ -270,11 +270,12 @@ select.inp{appearance:none;padding-right:38px;
   border:.55mm solid #8E6FCB;border-radius:2.6mm;background:#fff;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 .stk .qr{flex:none;display:grid;place-items:center;background:#fff;position:relative;z-index:2}
-.stk .wm{position:absolute;right:1.5%;top:50%;transform:translateY(-50%);height:82%;
-  opacity:.14;z-index:0;pointer-events:none;object-fit:contain}
-.stk.shortmode .wm{right:auto;left:50%;transform:translate(-50%,-50%);height:88%;opacity:.12}
+.stk .wm{position:absolute;right:2%;top:50%;transform:translateY(-50%);height:52%;
+  opacity:.13;z-index:0;pointer-events:none;object-fit:contain}
+.stk.shortmode .wm{right:auto;left:50%;transform:translate(-50%,-50%);height:62%;opacity:.10}
 .stk .qr img,.stk .qr canvas{display:block;width:100%!important;height:100%!important}
-.stk .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:.5mm;z-index:2}
+.stk .tx{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;
+  gap:.25mm;z-index:2}
 .stk .ward{align-self:flex-end;color:#8E6FCB;font-family:'Prompt',sans-serif;font-weight:600;
   letter-spacing:.35mm;line-height:1.1;white-space:nowrap}
 .stk .code{align-self:flex-start;background:#EFE6FB;color:#4E2C82;border-radius:99px;
@@ -291,9 +292,14 @@ select.inp{appearance:none;padding-right:38px;
 .stk.txtmode .tx{align-items:center;text-align:center;width:100%}
 .stk.txtmode .ward,.stk.txtmode .code,.stk.txtmode .name{align-self:center}
 .stk.shortmode{justify-content:center}
+.stk.shortmode .plainbox{width:100%;min-width:0;z-index:2;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:.2mm}
 .stk.shortmode .plain{font-family:'Sarabun',sans-serif;font-weight:700;color:#3F2270;
-  line-height:1.15;text-align:center;width:100%;white-space:nowrap;overflow:hidden;
+  line-height:1.1;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;letter-spacing:.02mm}
+.stk.shortmode .pname{font-family:'Sarabun',sans-serif;font-weight:600;color:#6B49A8;
+  line-height:1.12;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
 
 /* ══════════ อื่นๆ ══════════ */
 /* แถบแจ้งสถานะการเชื่อมต่อ */
@@ -363,6 +369,39 @@ select.inp{appearance:none;padding-right:38px;
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+/* ══════════ ใบสรุปรายการของผู้รับผิดชอบ ══════════ */
+.report{width:210mm;min-height:297mm;padding:11mm 11mm 9mm;background:#fff;color:#111;
+  font-family:'Sarabun',sans-serif;box-sizing:border-box;display:flex;flex-direction:column;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.report .rh{display:flex;align-items:center;gap:5mm;border-bottom:.6mm solid #6B3FA0;
+  padding-bottom:3mm;margin-bottom:4mm}
+.report .rh img{height:16mm;flex:none}
+.report .rh .t{flex:1;min-width:0}
+.report .rh .t b{display:block;font-family:'Prompt',sans-serif;font-weight:600;font-size:15pt;
+  line-height:1.25;color:#4E2C82}
+.report .rh .t span{display:block;font-size:10pt;color:#444}
+.report .rh .meta{text-align:right;font-size:9.5pt;color:#444;white-space:nowrap}
+.report .who{background:#F1E9FC;border:.35mm solid #C9B3EC;border-radius:2.5mm;
+  padding:2.4mm 4mm;margin-bottom:3.5mm;display:flex;justify-content:space-between;
+  align-items:baseline;gap:4mm;flex-wrap:wrap}
+.report .who b{font-family:'Prompt',sans-serif;font-weight:600;font-size:14pt;color:#4E2C82}
+.report .who span{font-size:10pt;color:#3F3556}
+.report table{width:100%;border-collapse:collapse;table-layout:fixed}
+.report th,.report td{border:.25mm solid #B9A6DB;padding:.9mm 1.6mm;vertical-align:top;
+  word-wrap:break-word;overflow-wrap:break-word}
+.report th{background:#EFE6FB;color:#4E2C82;font-weight:600;font-family:'Prompt',sans-serif;
+  text-align:center}
+.report td.c{text-align:center} .report td.r{text-align:right}
+.report tbody tr:nth-child(even) td{background:#FBF8FF}
+.report .sum{margin-top:3mm;display:flex;gap:4mm;flex-wrap:wrap;font-size:10pt}
+.report .sum div{background:#F6F1FD;border-radius:2mm;padding:1.6mm 3.4mm}
+.report .sum b{color:#4E2C82}
+.report .sign{margin-top:auto;padding-top:9mm;display:flex;gap:14mm;justify-content:space-around;
+  font-size:10pt;text-align:center;color:#333}
+.report .sign div{flex:1}
+.report .sign i{display:block;border-bottom:.3mm dotted #666;height:9mm;margin-bottom:1.6mm}
+.report .foot{margin-top:3mm;font-size:8pt;color:#777;text-align:center}
+
 /* ══════════ พิมพ์ ══════════ */
 #printRoot{display:none}
 @media print{
@@ -372,6 +411,8 @@ select.inp{appearance:none;padding-right:38px;
   #printRoot{display:block!important}
   .sheetbox{box-shadow:none;margin:0;page-break-after:always;break-after:page}
   .sheetbox:last-child{page-break-after:auto}
+  .report{page-break-after:always;break-after:page}
+  .report:last-child{page-break-after:auto}
   .zoomBox{transform:none!important}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
@@ -459,6 +500,9 @@ select.inp{appearance:none;padding-right:38px;
       <button class="chip" data-f="broken">ชำรุด/ไม่พบ</button>
       <button class="chip" data-f="fix">อยู่ระหว่างซ่อม</button>
       <span style="flex:1"></span>
+      <button class="chip" onclick="openOwnerReport()"
+        style="border-color:var(--plum);background:var(--lav-soft);color:var(--plum)">
+        พิมพ์รายการของผู้รับผิดชอบ</button>
       <button class="chip" onclick="openBulkOwner()"
         style="border-color:var(--lav);color:var(--plum)">เปลี่ยนผู้รับผิดชอบหลายรายการ</button>
     </div>
@@ -567,6 +611,9 @@ select.inp{appearance:none;padding-right:38px;
         <label class="note">ช่องไฟระหว่างดวง
           <input class="inp" id="oGap" type="number" min="0" max="12" step="0.2"
                  style="width:82px;padding:8px 10px;margin:0 5px"> มม.</label>
+        <label class="note">ความสูงดวง
+          <input class="inp" id="oRowH" type="number" min="8" max="90" step="0.5"
+                 style="width:82px;padding:8px 10px;margin:0 5px"> มม.</label>
         <label class="note"><input type="checkbox" id="oTrim" checked>ตัดพื้นที่ว่างท้ายแผ่น</label>
       </div>
       <div class="tools">
@@ -639,6 +686,7 @@ const TH_MONTH=['มกราคม','กุมภาพันธ์','มีน
                 'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
 /* ผังแผ่น A4 : cols/rows/ขอบ(mm)/ขนาด QR(mm)/ฟอนต์(pt)/ช่องไฟ */
+const VP = 0.5;   // ขอบในแนวตั้ง = ครึ่งหนึ่งของขอบด้านข้าง
 const LAYOUTS = {
   12:{cols:2,rows:6, pad:8,  gap:2.5,qr:28, fw:6.4, fc:12,  fn:9.6, fo:9.4, ipad:3.2, icon:true },
   24:{cols:3,rows:8, pad:7,  gap:1.8,qr:20, fw:4.8, fc:8.6, fn:7.0, fo:6.8, ipad:2.2, icon:true },
@@ -1340,6 +1388,149 @@ async function submitBulkOwner(){
   }catch(e){ toast(e.message,'bad'); }
 }
 
+/* ═════════ ใบสรุปรายการของผู้รับผิดชอบ ═════════ */
+function openOwnerReport(){
+  const cur=$('#fOwner').value||S.by||'';
+  const list=ownerList();
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>พิมพ์รายการของผู้รับผิดชอบ</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="field"><label>เลือกผู้รับผิดชอบ</label>
+        <select class="inp" id="rpOwner">
+          <option value="">— เลือกรายชื่อ —</option>
+          ${list.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('')}
+        </select></div>
+      <div class="field"><label>ตัวเลือก</label>
+        <div style="display:grid;gap:8px">
+          <label class="note"><input type="checkbox" id="rpAlive" checked>
+            เฉพาะที่ยังใช้งาน (ไม่รวมแทงจำหน่าย)</label>
+          <label class="note"><input type="checkbox" id="rpPrice" checked>แสดงราคา</label>
+          <label class="note"><input type="checkbox" id="rpCheck" checked>
+            แสดงผลตรวจเดือนนี้ และช่องเซ็นรับรอง</label>
+        </div></div>
+      <div id="rpInfo" class="note" style="margin-bottom:14px"></div>
+      <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
+        onclick="printOwnerReport()">สร้างใบสรุปและสั่งพิมพ์</button>
+      <div class="note" style="margin-top:12px">
+        ในหน้าต่างพิมพ์ เลือกปลายทางเป็น <b>บันทึกเป็น PDF</b> เพื่อเก็บไฟล์
+        และเปิด <b>กราฟิกพื้นหลัง</b> เพื่อให้หัวตารางมีสี</div>
+    </div>`;
+  $('#rpOwner').addEventListener('change',rpPreview);
+  $('#rpAlive').addEventListener('change',rpPreview);
+  rpPreview();
+  $('#scrim').classList.add('on');
+}
+function rpRows(){
+  const ow=$('#rpOwner').value;
+  if(!ow) return [];
+  const alive=$('#rpAlive').checked;
+  return S.items.filter(i=>i.owner===ow && (!alive||ALIVE(i)))
+                .sort((a,b)=> a.cat===b.cat
+                  ? String(a.name).localeCompare(String(b.name),'th')
+                  : (a.cat==='med'?-1:1));
+}
+function rpPreview(){
+  const r=rpRows();
+  $('#rpInfo').innerHTML = !$('#rpOwner').value
+    ? 'เลือกรายชื่อก่อน'
+    : `พบ <b style="color:var(--plum)">${r.length}</b> รายการ · `+
+      `มูลค่ารวม ${baht(r.reduce((a,i)=>a+(Number(i.price)||0),0))} บาท`+
+      (r.length>68
+        ? ' · <span style="color:var(--warn)">จำนวนมาก อาจต้องใช้กระดาษ 2 แผ่น</span>'
+        : r.length>40 ? ' · ระบบจะย่อขนาดตัวอักษรให้พอดีหน้าเดียว' : '');
+}
+function printOwnerReport(){
+  const ow=$('#rpOwner').value;
+  if(!ow) return toast('กรุณาเลือกผู้รับผิดชอบ','bad');
+  const rows=rpRows();
+  if(!rows.length) return toast('ไม่พบครุภัณฑ์ของผู้รับผิดชอบคนนี้','bad');
+
+  const showPrice=$('#rpPrice').checked, showCheck=$('#rpCheck').checked;
+  const cm=checkMap(), n=rows.length;
+
+  /* คำนวณขนาดตัวอักษรจากพื้นที่ที่เหลือจริง เพื่อให้ลงหน้าเดียว */
+  const AVAIL = 297 - 11 - 9        // กระดาษ ลบขอบบนล่าง
+              - 22                  // หัวใบ
+              - 12                  // แถบชื่อผู้รับผิดชอบ
+              - (showCheck ? 30 : 14);  // สรุป + ช่องเซ็น
+  const rowH = AVAIL / (n + 1.6);   // 1.6 เผื่อหัวตารางและแถวรวม
+  const pad  = Math.max(0.25, Math.min(1.4, rowH*0.13));
+  const fs   = Math.max(5.4, Math.min(11, (rowH - pad*2) * 2.8346 / 1.30));
+  const overflow = (fs*1.30/2.8346 + pad*2) * (n+1.6) > AVAIL + 6;
+
+  const done=rows.filter(i=>cm[key(i)]).length;
+  const bad=rows.filter(i=>i.status==='ชำรุด'||i.status==='ไม่พบ').length;
+  const val=rows.reduce((a,i)=>a+(Number(i.price)||0),0);
+  const today=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  const logo=($('#brandLogo')||{}).src||'';
+
+  const cols = [
+    ['ลำดับ','6%'],['ชื่อครุภัณฑ์','30%'],['หมายเลขครุภัณฑ์','20%'],
+    ['จุดวาง','13%'],['สถานะ','10%']
+  ];
+  if(showPrice) cols.push(['ราคา (บาท)','11%']);
+  if(showCheck) cols.push(['ผลตรวจ','10%']);
+
+  const body=rows.map((i,k)=>{
+    const c=cm[key(i)];
+    return `<tr>
+      <td class="c">${k+1}</td>
+      <td>${esc(i.name)}</td>
+      <td>${esc(i.code)}</td>
+      <td>${esc(i.loc||'—')}</td>
+      <td class="c">${esc(i.status)}</td>
+      ${showPrice?`<td class="r">${i.price?baht(i.price):'—'}</td>`:''}
+      ${showCheck?`<td class="c">${c?esc(c.result):'—'}</td>`:''}
+    </tr>`;
+  }).join('');
+
+  $('#printRoot').innerHTML=`
+    <div class="report" style="font-size:${fs}pt">
+      <div class="rh">
+        ${logo?`<img src="${logo}" alt="">`:''}
+        <div class="t">
+          <b>ทะเบียนครุภัณฑ์ในความรับผิดชอบ</b>
+          <span>หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10 · โรงพยาบาลมหาราชนครราชสีมา</span>
+        </div>
+        <div class="meta">รอบตรวจ ${thMonth(S.month)}<br>พิมพ์เมื่อ ${today}</div>
+      </div>
+
+      <div class="who">
+        <b>${esc(ow)}</b>
+        <span>ครุภัณฑ์ในความรับผิดชอบ ${n} รายการ${
+          $('#rpAlive').checked?' (ไม่รวมแทงจำหน่าย)':''}</span>
+      </div>
+
+      <table style="font-size:${fs}pt">
+        <colgroup>${cols.map(c=>`<col style="width:${c[1]}">`).join('')}</colgroup>
+        <thead><tr>${cols.map(c=>`<th style="padding:${pad+0.3}mm 1.4mm">${c[0]}</th>`).join('')}</tr></thead>
+        <tbody>${body.replace(/<td/g,'<td style="padding:'+pad+'mm 1.4mm"')}</tbody>
+        ${showPrice?`<tfoot><tr>
+          <th colspan="${cols.length-(showCheck?2:1)}" style="text-align:right">รวมมูลค่า</th>
+          <th class="r" style="text-align:right">${baht(val)}</th>
+          ${showCheck?'<th></th>':''}</tr></tfoot>`:''}
+      </table>
+
+      <div class="sum">
+        <div>ทั้งหมด <b>${n}</b> รายการ</div>
+        ${showCheck?`<div>ตรวจแล้วเดือนนี้ <b>${done}</b> · ค้างตรวจ <b>${n-done}</b></div>`:''}
+        <div>ชำรุด/ไม่พบ <b>${bad}</b></div>
+        ${showPrice?`<div>มูลค่ารวม <b>${baht(val)}</b> บาท</div>`:''}
+      </div>
+
+      ${showCheck?`<div class="sign">
+        <div><i></i>( ${esc(ow)} )<br>ผู้รับผิดชอบครุภัณฑ์</div>
+        <div><i></i>(&nbsp;.....................................&nbsp;)<br>หัวหน้าหอผู้ป่วย</div>
+      </div>`:''}
+      <div class="foot">พิมพ์จากระบบจัดการครุภัณฑ์ หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10</div>
+    </div>`;
+
+  closeSheet();
+  if(overflow) toast('รายการมากเกินกว่าจะย่อลงหน้าเดียวได้ ระบบจะพิมพ์ต่อเป็นหน้าที่สอง','bad');
+  setTimeout(()=>window.print(),150);
+}
+
 /* ═════════ ฟอร์มตรวจ ═════════ */
 let ckState={k:'',result:'ปกติ'};
 function openCheck(k){
@@ -1588,21 +1779,40 @@ async function closeFix(row,cat,itemRow){
 
 /* ═════════ สติ๊กเกอร์ ═════════ */
 $('#layoutChips').innerHTML=Object.keys(LAYOUTS).map(n=>
-  `<button class="chip ${n==24?'on':''}" data-l="${n}">${n} ดวง / แผ่น</button>`).join('');
+  `<button class="chip ${n==24?'on':''}" data-l="${n}">${LAYOUTS[n].cols} คอลัมน์</button>`).join('');
 function syncSpacing(){
   const L=LAYOUTS[S.layout];
   $('#oPad').value=L.pad; $('#oGap').value=L.gap;
+  /* ความสูงพอดีเนื้อหาของแต่ละรูปแบบ ไม่เหลือช่องว่างบนล่าง */
+  const st=$('#stkStyle') ? $('#stkStyle').value : 'qr';
+  const vp=L.ipad*2*VP;
+  let need;
+  if(st==='textShort')      need=(L.fc+L.fn)*1.5*1.2/2.8346 + vp;
+  else if(st==='textLong')  need=((L.fw||0)+L.fc+L.fn+L.fo)*1.35*1.2/2.8346 + vp;
+  else                      need=L.qr + vp;
+  $('#oRowH').value=(Math.round(need*2)/2).toFixed(1);
+}
+function geom(){
+  const L=LAYOUTS[S.layout];
+  const PAD=Math.max(0,Math.min(25, parseFloat($('#oPad').value)||L.pad));
+  const GAP=Math.max(0,Math.min(12, parseFloat($('#oGap').value)||0));
+  const rowH=Math.max(8, parseFloat($('#oRowH').value)||(L.qr+L.ipad*2));
+  const rows=Math.max(1, Math.floor((297-PAD*2+GAP)/(rowH+GAP)));
+  const cellW=((210-PAD*2)-(GAP*(L.cols-1)))/L.cols;
+  return {L,PAD,GAP,rowH,rows,cols:L.cols,per:L.cols*rows,cellW};
 }
 $$('[data-l]').forEach(b=>b.onclick=()=>{
   $$('[data-l]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.layout=+b.dataset.l; syncSpacing(); updatePickCount();
+  b.classList.add('on'); S.layout=+b.dataset.l; syncSpacing(); updatePickCount(); updatePickCount();
   if($('#previewWrap').children.length) buildStickers();
 });
-syncSpacing();
+syncSpacing(); updatePickCount();
 ['#sCat','#sOwner','#sStatus','#sQ'].forEach(s=>
   $(s).addEventListener('input',()=>{S.pickShown=36;renderPick();}));
-$('#copies').addEventListener('input',updatePickCount);
+['#copies','#oPad','#oGap','#oRowH'].forEach(x=>
+  $(x).addEventListener('input',updatePickCount));
 $('#stkStyle').addEventListener('change',()=>{
+  syncSpacing(); updatePickCount(); updatePickCount();
   const txt=$('#stkStyle').value!=='qr';
   $('#qrMode').disabled=txt;
   $('#qrMode').style.opacity=txt?.45:1;
@@ -1646,9 +1856,14 @@ function renderPick(){
 }
 function copiesNow(){ return Math.max(1,Math.min(500,parseInt($('#copies').value,10)||1)); }
 function updatePickCount(){
-  const n=S.sel.size, L=LAYOUTS[S.layout], per=L.cols*L.rows, pool=pickPool().length;
+  const n=S.sel.size, per=geom().per, pool=pickPool().length;
   const c=copiesNow(), total=n*c;
   $('#btnAll').textContent='เลือกทั้งหมด ('+pool+' รายการ)';
+  const g=geom();
+  $$('[data-l]').forEach(b=>{
+    if(+b.dataset.l===S.layout) b.textContent=g.cols+' คอลัมน์ · '+g.per+' ดวง/แผ่น';
+    else b.textContent=LAYOUTS[b.dataset.l].cols+' คอลัมน์';
+  });
   $('#pickCount').innerHTML = n
     ? `เลือกไว้ <b style="font-size:18px">${n}</b> รายการ` +
       (c>1?` × ซ้ำชิ้นละ ${c} ดวง`:'') +
@@ -1666,7 +1881,7 @@ function doPrint(){
 function fillSheet(){
   const n=S.sel.size;
   if(!n) return toast('เลือกครุภัณฑ์ก่อน แล้วจึงกดเติมให้เต็มแผ่น','bad');
-  const L=LAYOUTS[S.layout], per=L.cols*L.rows;
+  const per=geom().per;
   $('#copies').value=Math.max(1,Math.floor(per/n));
   updatePickCount();
   toast('ตั้งให้พิมพ์ซ้ำชิ้นละ '+$('#copies').value+' ดวง เต็มพอดี 1 แผ่น','good');
@@ -1711,7 +1926,7 @@ function buildStickers(){
   const copies=copiesNow(), chosen=[];
   base.forEach(i=>{ for(let c=0;c<copies;c++) chosen.push(i); });
 
-  const L=LAYOUTS[S.layout], per=L.cols*L.rows;
+  const G=geom(), L=G.L, per=G.per;
   const showName=$('#oName').checked, showOwner=$('#oOwner').checked;
   const showWard=$('#oWard').checked && L.fw>0;
   const showIcon=$('#oIcon').checked && L.icon && style!=='textShort';
@@ -1719,11 +1934,8 @@ function buildStickers(){
   const showLogo=$('#oLogo').checked, trim=$('#oTrim').checked;
   const LOGO=($('#brandLogo')||{}).src||'';
 
-  const PAD=Math.max(0,Math.min(25, parseFloat($('#oPad').value)||L.pad));
-  const GAP=Math.max(0,Math.min(12, parseFloat($('#oGap').value)||0));
-  const cellH=((297-PAD*2)-(GAP*(L.rows-1)))/L.rows;
-  const cellW=((210-PAD*2)-(GAP*(L.cols-1)))/L.cols;
-  const innerW=cellW-L.ipad*2, innerH=cellH-L.ipad*2;
+  const PAD=G.PAD, GAP=G.GAP, cellH=G.rowH, cellW=G.cellW;
+  const innerW=cellW-L.ipad*2, innerH=cellH-L.ipad*2*VP;
   const MM2PT=2.8346;
   const boost=useQR?1:(style==='textShort'?1:1.5);   // ไม่มี QR ก็ขยายตัวอักษรได้
   const fit=(txt,wMM,hMM,cap)=>Math.max(5,Math.min(
@@ -1744,21 +1956,27 @@ function buildStickers(){
 
     const slice=chosen.slice(p*per,(p+1)*per);
     const rowsUsed=Math.ceil(slice.length/L.cols);
-    if(trim && rowsUsed<L.rows)
+    if(trim && rowsUsed<G.rows)
       page.style.height=(PAD*2+rowsUsed*cellH+GAP*Math.max(0,rowsUsed-1)).toFixed(2)+'mm';
 
     slice.forEach(i=>{
       const cell=document.createElement('div');
       cell.className='stk'+(cut?' cutline':'')+(useQR?'':' txtmode')
                     +(style==='textShort'?' shortmode':'');
-      cell.style.padding=L.ipad+'mm';
+      cell.style.padding=(L.ipad*VP).toFixed(2)+'mm '+L.ipad+'mm';
       cell.style.gap=(L.ipad*.85).toFixed(2)+'mm';
       if(showLogo && LOGO)
         cell.insertAdjacentHTML('beforeend',`<img class="wm" src="${LOGO}" alt="">`);
 
       if(style==='textShort'){
-        cell.insertAdjacentHTML('beforeend',`<div class="plain" style="position:relative;z-index:2;
-          font-size:${fit(i.code,innerW,innerH,54).toFixed(1)}pt">${esc(i.code)}</div>`);
+        const nameOn=showName && i.name;
+        const fcS=fit(i.code, innerW, nameOn?innerH*0.60:innerH, 54);
+        const fnS=nameOn ? Math.min(fcS*0.52, fit(i.name, innerW, innerH*0.34, 22)) : 0;
+        cell.insertAdjacentHTML('beforeend',
+          `<div class="plainbox">
+             <div class="plain" style="font-size:${fcS.toFixed(1)}pt">${esc(i.code)}</div>`+
+             (nameOn?`<div class="pname" style="font-size:${fnS.toFixed(1)}pt">${esc(i.name)}</div>`:'')+
+           `</div>`);
         page.appendChild(cell);
         return;
       }
@@ -1767,7 +1985,8 @@ function buildStickers(){
       if(useQR){
         qrBox=document.createElement('div');
         qrBox.className='qr';
-        qrBox.style.width=L.qr+'mm'; qrBox.style.height=L.qr+'mm';
+        const qs=Math.min(L.qr, innerH).toFixed(2);
+        qrBox.style.width=qs+'mm'; qrBox.style.height=qs+'mm';
         cell.appendChild(qrBox);
       }
 
@@ -1833,7 +2052,7 @@ function buildStickers(){
   };
   if(!jobs.length) return finish();
 
-  const px=Math.round(L.qr*3.7795*3);
+  const px=Math.round(Math.min(L.qr,innerH)*3.7795*3);
   let n=0;
   (function step(){
     const end=Math.min(n+20,jobs.length);
