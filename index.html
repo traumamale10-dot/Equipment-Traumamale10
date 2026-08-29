@@ -122,8 +122,19 @@ p.vs{margin:0 0 24px;color:var(--dim);font-size:15.5px}
 .hero .info p{margin:0 0 14px;font-size:14.5px;color:var(--dim)}
 .chips-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px}
 .chip-hero{background:var(--surface);border:1.5px solid var(--line);border-radius:13px;
-  padding:9px 13px;transition:.18s;box-shadow:var(--sh)}
-.chip-hero:hover{border-color:var(--lav);transform:translateY(-2px)}
+  padding:9px 13px;transition:.18s;box-shadow:var(--sh);text-align:left;width:100%;
+  cursor:pointer;position:relative}
+.chip-hero:hover{border-color:var(--lav);transform:translateY(-2px);box-shadow:var(--sh2)}
+.chip-hero::after{content:'›';position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  color:var(--dim2);font-size:20px;line-height:1;opacity:0;transition:.18s}
+.chip-hero:hover::after{opacity:1}
+.donut .legend div{cursor:pointer;border-radius:9px;padding:3px 6px;margin:-3px -6px;transition:.15s}
+.donut .legend div:hover{background:var(--lav-soft)}
+.rank .r{cursor:pointer;border-radius:10px;padding:4px 7px;margin:-4px -7px;transition:.15s}
+.rank .r:hover{background:var(--lav-soft)}
+.stat.click{cursor:pointer;border-radius:10px;padding-left:7px;padding-right:7px;
+  margin-left:-7px;margin-right:-7px;transition:.15s}
+.stat.click:hover{background:var(--lav-soft)}
 .chip-hero b{display:block;font-family:var(--f-d);font-weight:600;font-size:22px;line-height:1.2;
   color:var(--ink)}
 .chip-hero span{font-size:12.5px;color:var(--dim)}
@@ -1129,6 +1140,19 @@ function openFixMap(){
 const ALIVE = it => it.status!=='แทงจำหน่าย';
 function renderAll(){ renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); }
 
+/* ไปหน้าทะเบียนพร้อมตั้งตัวกรองให้เสร็จ ใช้จากการ์ดบนหน้าภาพรวม */
+function goFilter(opt){
+  opt=opt||{};
+  $('#q').value      = opt.q      || '';
+  $('#fCat').value   = opt.cat    || '';
+  $('#fGrp').value   = opt.grp    || '';
+  $('#fStatus').value= opt.status || '';
+  $('#fOwner').value = opt.owner  || '';
+  S.filter = opt.f || 'all';
+  $$('[data-f]').forEach(x=>x.classList.toggle('on',x.dataset.f===S.filter));
+  S.shown=24; renderStock(); go('stock');
+}
+
 /* ---- สรุปจำนวนแยกประเภท ---- */
 function renderKpis(){
   const cm=checkMap();
@@ -1243,11 +1267,22 @@ function renderDash(){
            arc.style.strokeDashoffset=C*(1-pct/100); }
 
   $('#vitals').innerHTML=[
-    ['ตรวจแล้ว',done,'ok'],['ค้างตรวจ',live.length-done,'warn'],
-    ['อยู่ระหว่างซ่อม',Object.keys(of).length,'fix'],
-    ['ถูกยืม',S.loans.filter(l=>l.state!=='คืนแล้ว').length,'hold'],
-    ['ชำรุด/ไม่พบ',bad,'warn']
-  ].map(([l,v,c])=>`<div class="chip-hero ${c}"><b data-n>${v}</b><span>${l}</span></div>`).join('');
+    ['ตรวจแล้ว',done,'ok','done'],
+    ['ค้างตรวจ',live.length-done,'warn','todo'],
+    ['อยู่ระหว่างซ่อม',Object.keys(of).length,'fix','gofix'],
+    ['ถูกยืม',S.loans.filter(l=>l.state!=='คืนแล้ว').length,'hold','goloan'],
+    ['ชำรุด/ไม่พบ',bad,'warn','broken']
+  ].map(([l,v,c,act])=>
+    `<button class="chip-hero ${c}" data-act="${act}"><b data-n>${v}</b><span>${l}</span></button>`
+  ).join('');
+  $$('#vitals .chip-hero').forEach(el=>el.onclick=()=>{
+    const a=el.dataset.act;
+    if(a==='gofix'){ S.fxTab='open'; $$('[data-fx]').forEach(x=>
+      x.classList.toggle('on',x.dataset.fx==='open')); renderFix(); return go('fix'); }
+    if(a==='goloan'){ S.lnTab='out'; $$('[data-ln]').forEach(x=>
+      x.classList.toggle('on',x.dataset.ln==='out')); renderLoan(); return go('loan'); }
+    goFilter({f:a});
+  });
   $$('#vitals b[data-n]').forEach((el,k)=>{
     const v=+el.textContent; el.textContent='0'; setTimeout(()=>countUp(el,v,700),k*70);
   });
@@ -1267,21 +1302,25 @@ function renderDash(){
         stroke="${COL[k]||'#9C77DA'}" stroke-dasharray="${dash}" stroke-dashoffset="${o}"/>`;
     }).join('')}</svg>
     <div class="legend">${ent.map(([k,v])=>
-      `<div><i style="background:${COL[k]||'#9C77DA'}"></i>${esc(k)}
+      `<div data-st="${esc(k)}"><i style="background:${COL[k]||'#9C77DA'}"></i>${esc(k)}
         <b>${v}</b><span style="color:var(--dim2);font-size:13px;margin-left:6px">
         ${Math.round(v/tot*100)}%</span></div>`).join('')}</div>`;
+  $$('#byStatus .legend div').forEach(el=>
+    el.onclick=()=>goFilter({status:el.dataset.st}));
 
   /* แยกตามประเภท */
   $('#byCat').innerHTML=['med','off'].map(c=>{
     const all=S.items.filter(i=>i.cat===c&&ALIVE(i));
     const dn=all.filter(i=>chk(cm,i)).length;
     const p=all.length?Math.round(dn/all.length*100):0;
-    return `<div style="margin-bottom:16px">
+    return `<div style="margin-bottom:16px;cursor:pointer" data-cat2="${c}">
       <div class="stat" style="border:0;padding-bottom:4px">
         <span>${c==='med'?'ทางการแพทย์':'สำนักงาน'}</span>
         <b>${dn}/${all.length} <span style="color:var(--dim2);font-size:14px">${p}%</span></b></div>
       <div class="meter"><i style="width:0%"></i></div></div>`;
   }).join('');
+  $$('#byCat [data-cat2]').forEach(el=>
+    el.onclick=()=>goFilter({cat:el.dataset.cat2}));
   setTimeout(()=>$$('#byCat .meter i').forEach((el,k)=>{
     const all=S.items.filter(i=>i.cat===(k?'off':'med')&&ALIVE(i));
     const dn=all.filter(i=>chk(cm,i)).length;
@@ -1295,38 +1334,50 @@ function renderDash(){
   const top=Object.entries(owe).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const mx=top.length?top[0][1]:1;
   $('#topOwner').innerHTML= top.length
-    ? top.map(([k,v],n)=>`<div class="r">
+    ? top.map(([k,v],n)=>`<div class="r" data-ow="${esc(k)}">
         <em>${n+1}</em><span class="nm">${esc(k)}</span><b>${v}</b>
         <div class="bw"><i style="width:0%" data-w="${Math.round(v/mx*100)}"></i></div>
       </div>`).join('')
     : '<div class="note">ตรวจครบทุกรายการแล้ว</div>';
   setTimeout(()=>$$('#topOwner .bw i').forEach((el,k)=>
     setTimeout(()=>el.style.width=el.dataset.w+'%',k*80)),60);
+  $$('#topOwner .r').forEach(el=>el.onclick=()=>{
+    const o=el.dataset.ow;
+    goFilter({f:'todo', owner: o==='ไม่ระบุผู้รับผิดชอบ' ? '' : o});
+  });
 
   /* ครุภัณฑ์ที่ถูกยืมอยู่ */
   const outLoans=S.loans.filter(l=>l.state!=='คืนแล้ว');
   const overLoans=outLoans.filter(l=>isOver(l)||needFollow(l));
   $('#openLoan').innerHTML= outLoans.length
-    ? outLoans.slice(0,6).map(l=>`<div class="stat">
+    ? outLoans.slice(0,6).map(l=>`<div class="stat click" data-r="${l.row}">
         <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           ${esc(l.name)}<br><span style="color:var(--dim2);font-size:13px">${esc(l.who)}</span></span>
         <span class="tag ${isOver(l)||needFollow(l)?'t-bad':'t-warn'}">${
           isOver(l)?'เกิน '+daysOver(l)+' วัน'
           :needFollow(l)?daysOut(l)+' วัน'
           :esc(l.due||'ไม่ระบุ')}</span></div>`).join('')
-      + (outLoans.length>6?`<div class="note" style="margin-top:8px">และอีก ${
-          outLoans.length-6} รายการ</div>`:'')
+      + (outLoans.length>6?`<button class="btn" style="margin-top:10px;width:100%;
+          justify-content:center" onclick="S.lnTab='out';renderLoan();go('loan')">
+          ดูทั้งหมด ${outLoans.length} รายการ</button>`:'')
       + (overLoans.length?`<div class="note" style="margin-top:10px;color:var(--bad)">
           ต้องติดตาม ${overLoans.length} รายการ</div>`:'')
     : '<div class="note">ไม่มีครุภัณฑ์ที่ถูกยืมอยู่</div>';
+  $$('#openLoan .stat.click').forEach(el=>el.onclick=()=>openLoanDetail(+el.dataset.r));
 
   /* งานซ่อมค้าง */
   const ofs=Object.values(of);
   $('#openFix').innerHTML=ofs.length
-    ? ofs.slice(0,6).map(f=>`<div class="stat"><span style="min-width:0;overflow:hidden;
-        text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</span>
-        <span class="tag t-fix">${esc(f.sent||'—')}</span></div>`).join('')
+    ? ofs.slice(0,6).map(f=>`<div class="stat click" data-r="${f.row}">
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${esc(f.name)}<br><span style="color:var(--dim2);font-size:13px">${
+            esc(f.issue||'—')}</span></span>
+        <span class="tag ${FIX_TAG(f)}">${esc(f.state)}</span></div>`).join('')
+      + (ofs.length>6?`<button class="btn" style="margin-top:10px;width:100%;
+          justify-content:center" onclick="S.fxTab='open';renderFix();go('fix')">
+          ดูทั้งหมด ${ofs.length} รายการ</button>`:'')
     : '<div class="note">ไม่มีงานซ่อมค้าง</div>';
+  $$('#openFix .stat.click').forEach(el=>el.onclick=()=>openFixDetail(+el.dataset.r));
 }
 function statusTag(s){
   if(s==='มีของ') return 't-ok';
