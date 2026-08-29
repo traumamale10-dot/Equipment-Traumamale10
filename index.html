@@ -275,8 +275,8 @@ select.inp{appearance:none;padding-right:38px;
   opacity:.13;z-index:0;pointer-events:none;object-fit:contain}
 .stk.shortmode .wm{right:auto;left:50%;transform:translate(-50%,-50%);height:62%;opacity:.10}
 .stk .qr img,.stk .qr canvas{display:block;width:100%!important;height:100%!important}
-.stk .tx{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;
-  gap:.25mm;z-index:2}
+.stk .tx{flex:1;min-width:0;max-height:100%;overflow:hidden;display:flex;flex-direction:column;
+  justify-content:center;gap:.25mm;z-index:2}
 .stk .ward{align-self:flex-end;color:#8E6FCB;font-family:'Prompt',sans-serif;font-weight:600;
   letter-spacing:.35mm;line-height:1.1;white-space:nowrap}
 .stk .code{align-self:flex-start;background:#EFE6FB;color:#4E2C82;border-radius:99px;
@@ -1862,7 +1862,7 @@ function syncSpacing(){
   const vp=L.ipad*2*VP;
   let need;
   if(st==='textShort')      need=(L.fc+L.fn)*1.5*1.2/2.8346 + vp;
-  else if(st==='textLong')  need=((L.fw||0)+L.fc+L.fn+L.fo)*1.35*1.2/2.8346 + vp;
+  else if(st==='textLong')  need=((L.fw||0)+L.fc+L.fn+L.fo)*1.45*1.2/2.8346 + vp + L.ipad*0.64;
   else                      need=L.qr + vp;
   $('#oRowH').value=(Math.round(need*2)/2).toFixed(1);
 }
@@ -2021,7 +2021,6 @@ function buildStickers(){
   const PAD=G.PAD, GAP=G.GAP, cellH=G.rowH, cellW=G.cellW;
   const innerW=cellW-L.ipad*2, innerH=cellH-L.ipad*2*VP;
   const MM2PT=2.8346;
-  const boost=useQR?1:(style==='textShort'?1:1.5);   // ไม่มี QR ก็ขยายตัวอักษรได้
   const fit=(txt,wMM,hMM,cap)=>Math.max(5,Math.min(
       (wMM*MM2PT)/(Math.max(1,String(txt).length)*0.585), hMM*MM2PT*0.66, cap||46));
 
@@ -2065,27 +2064,42 @@ function buildStickers(){
         return;
       }
 
+      const qs = useQR ? Math.min(L.qr, innerH) : 0;
       let qrBox=null;
       if(useQR){
         qrBox=document.createElement('div');
         qrBox.className='qr';
-        const qs=Math.min(L.qr, innerH).toFixed(2);
-        qrBox.style.width=qs+'mm'; qrBox.style.height=qs+'mm';
+        qrBox.style.width=qs.toFixed(2)+'mm'; qrBox.style.height=qs.toFixed(2)+'mm';
         cell.appendChild(qrBox);
       }
 
-      const txW=useQR?(innerW-L.qr-L.ipad*.85):innerW;
-      const pad=`${(L.ipad*.16).toFixed(2)}mm ${(L.ipad*.75).toFixed(2)}mm`;
-      const fc=Math.min(L.fc*boost, fit(i.code,txW,innerH*.4,26));
-      const fn=Math.min(L.fn*boost, fit(i.name,txW,innerH*.34,20));
+      /* จัดขนาดตัวอักษรให้ทุกบรรทัดรวมกันพอดีความสูงจริง ไม่ล้นกรอบ */
+      const txW = innerW - (useQR ? qs + L.ipad*0.85 : 0);
+      const parts = [];
+      if(showWard)  parts.push(['ward','TRAUMA MALE WARD', L.fw||3.5, false]);
+      parts.push(['code', i.code, L.fc, true]);
+      if(showName)  parts.push(['name', i.name, L.fn, true]);
+      if(showOwner) parts.push(['owner', i.owner||'—', L.fo, false]);
+
+      const LH = 1.2, GAPmm = 0.22, pillPad = L.ipad*0.16;
+      const nPill = parts.filter(x=>x[3]).length;
+      const budget = Math.max(2, innerH - GAPmm*(parts.length-1) - pillPad*2*nPill);
+      const sumW = parts.reduce((a,x)=>a+x[2], 0);
+      const kH = (budget*MM2PT) / (sumW*LH);          // ตัวคูณที่ทำให้สูงพอดี
+      const padCss = `${pillPad.toFixed(2)}mm ${(L.ipad*.7).toFixed(2)}mm`;
 
       const tx=document.createElement('div');
       tx.className='tx';
-      tx.innerHTML=
-        (showWard?`<div class="ward" style="font-size:${(L.fw*boost).toFixed(1)}pt">TRAUMA MALE WARD</div>`:'')+
-        `<div class="code" style="font-size:${fc.toFixed(1)}pt;padding:${pad}">${esc(i.code)}</div>`+
-        (showName?`<div class="name" style="font-size:${fn.toFixed(1)}pt;padding:${pad}">${esc(i.name)}</div>`:'')+
-        (showOwner?`<div class="owner" style="font-size:${(L.fo*boost).toFixed(1)}pt">${esc(i.owner||'—')}</div>`:'');
+      tx.style.lineHeight=LH;
+      tx.style.gap=GAPmm+'mm';
+      tx.innerHTML = parts.map(function(pt){
+        const [cls, txt, base, pill] = pt;
+        const usableW = txW - (pill ? L.ipad*1.4 : 0);
+        const byW = (usableW*MM2PT*0.97) / (Math.max(1,String(txt).length)*0.545);
+        const fs  = Math.max(3.4, Math.min(base*kH, byW, 30));
+        return `<div class="${cls}" style="font-size:${fs.toFixed(1)}pt${
+          pill ? ';padding:'+padCss : ''}">${esc(txt)}</div>`;
+      }).join('');
       cell.appendChild(tx);
 
       if(showIcon){
