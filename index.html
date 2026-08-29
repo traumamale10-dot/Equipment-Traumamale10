@@ -1091,10 +1091,11 @@ function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
   S.loans=d.loans||S.loans;
   S.staff=d.staff||S.staff; S.roles=d.roles||S.roles; S.ward=d.ward||S.ward;
+  const ow=sortByStaff(d.owners||[]);
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
-  fillSelect('#fOwner',d.owners,'ทุกผู้รับผิดชอบ');
-  fillSelect('#sOwner',d.owners,'ทุกผู้รับผิดชอบ');
-  fillSelect('#ckOwner',d.owners,'ทุกผู้รับผิดชอบ');
+  fillSelect('#fOwner',ow,'ทุกผู้รับผิดชอบ');
+  fillSelect('#sOwner',ow,'ทุกผู้รับผิดชอบ');
+  fillSelect('#ckOwner',ow,'ทุกผู้รับผิดชอบ');
   fillLookup(); buildMonths();
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
@@ -1185,12 +1186,12 @@ function fillLookup(){
     if(i.name) nm[i.name]=(nm[i.name]||0)+1;
     const o=i.owner||'ไม่ระบุผู้รับผิดชอบ'; ow[o]=(ow[o]||0)+1;
   });
-  const opt=(obj,first)=>`<option value="">${first}</option>`+
-    Object.keys(obj).sort((a,b)=>a.localeCompare(b,'th'))
-      .map(k=>`<option value="${esc(k)}">${esc(k)} (${obj[k]})</option>`).join('');
+  const opt=(obj,keys,first)=>`<option value="">${first}</option>`+
+    keys.map(k=>`<option value="${esc(k)}">${esc(k)} (${obj[k]})</option>`).join('');
   const a=$('#dName').value, b=$('#dOwner').value;
-  $('#dName').innerHTML=opt(nm,'— เลือกชื่อครุภัณฑ์ —');
-  $('#dOwner').innerHTML=opt(ow,'— เลือกผู้รับผิดชอบ —');
+  $('#dName').innerHTML=opt(nm,
+    Object.keys(nm).sort((x,y)=>x.localeCompare(y,'th')),'— เลือกชื่อครุภัณฑ์ —');
+  $('#dOwner').innerHTML=opt(ow, sortByStaff(Object.keys(ow)),'— เลือกผู้รับผิดชอบ —');
   $('#dName').value=a; $('#dOwner').value=b;
 }
 function clearLookup(){ $('#dName').value=''; $('#dOwner').value=''; renderLookup(); }
@@ -1535,9 +1536,20 @@ function grabPin(){
   if(!S.pin){ toast('กรุณากรอกรหัสยืนยันการแก้ไข','bad'); return false; }
   return true;
 }
+/* เรียงรายชื่อตามลำดับในชีตรายชื่อบุคลากร ชื่อที่ไม่มีในชีตจะต่อท้าย */
+function sortByStaff(list){
+  const idx={}; (S.staff||[]).forEach((n,i)=>{ idx[nk(n)]=i; });
+  return list.slice().sort((a,b)=>{
+    const ia=idx[nk(a)], ib=idx[nk(b)];
+    if(ia===undefined && ib===undefined) return String(a).localeCompare(String(b),'th');
+    if(ia===undefined) return 1;
+    if(ib===undefined) return -1;
+    return ia-ib;
+  });
+}
 function ownerList(){
   const o={}; S.items.forEach(i=>{ if(i.owner) o[i.owner]=1; });
-  return Object.keys(o).sort((a,b)=>a.localeCompare(b,'th'));
+  return sortByStaff(Object.keys(o));
 }
 async function apiPost(action,params){
   busyOn(BUSY_TEXT[action]);
