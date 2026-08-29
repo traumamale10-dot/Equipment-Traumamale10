@@ -616,7 +616,7 @@ const S = {
   base: store.get('kp.base') || (location.origin + location.pathname),
   by: store.get('kp.by') || '',
   pin: store.get('kp.pin') || '',
-  items:[], checks:[], fixes:[], staff:[], month:'',
+  items:[], checks:[], fixes:[], staff:[], roles:{}, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6
 };
@@ -805,7 +805,7 @@ async function reload(){
 }
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
-  S.staff=d.staff||S.staff;
+  S.staff=d.staff||S.staff; S.roles=d.roles||S.roles;
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
   fillSelect('#fOwner',d.owners,'ทุกผู้รับผิดชอบ');
   fillSelect('#sOwner',d.owners,'ทุกผู้รับผิดชอบ');
@@ -1075,8 +1075,13 @@ function openItem(k){
 
 /* ═════════ แก้ไขข้อมูล + อัปโหลดรูป ═════════ */
 /* รายชื่อบุคลากรสำหรับ dropdown — ถ้าชื่อที่บันทึกไว้ไม่อยู่ในชีต จะเติมให้อัตโนมัติ */
-function staffOptions(cur){
-  const list=S.staff.slice();
+function staffOptions(cur,cat){
+  let list=S.staff.slice();
+  const want = cat==='med' ? 'พยาบาล' : cat==='off' ? 'PN' : '';
+  if(want && Object.keys(S.roles||{}).length){
+    const f=list.filter(n=>String(S.roles[n]||'').indexOf(want)===0);
+    if(f.length) list=f;
+  }
   if(cur && list.indexOf(cur)===-1) list.unshift(cur);
   return `<option value="">— เลือกรายชื่อ —</option>`+
     list.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
@@ -1125,7 +1130,10 @@ function openEdit(k){
         <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd></dl>
 
       <div class="field"><label>ผู้รับผิดชอบ</label>
-        <select class="inp" id="edOwner">${staffOptions(i.owner||'')}</select></div>
+        <select class="inp" id="edOwner">${staffOptions(i.owner||'',i.cat)}</select>
+        <div class="note" style="margin-top:6px">${i.cat==='med'
+          ? 'ครุภัณฑ์ทางการแพทย์ — แสดงเฉพาะรายชื่อพยาบาล'
+          : 'ครุภัณฑ์สำนักงาน — แสดงเฉพาะรายชื่อ PN / Aid Worker'}</div></div>
 
       <div class="field"><label>สถานะ</label>
         <select class="inp" id="edStatus">${sts.map(v=>
@@ -1215,7 +1223,8 @@ function openBulkOwner(){
         <b style="color:var(--plum);font-size:19px">${list.length}</b> รายการ
         ที่แสดงอยู่ในหน้าทะเบียนตอนนี้ ถ้ายังไม่ใช่ชุดที่ต้องการ ให้ปิดหน้านี้แล้วกรองใหม่ก่อน</div>
       <div class="field"><label>ผู้รับผิดชอบคนใหม่</label>
-        <select class="inp" id="bkOwner">${staffOptions('')}</select></div>
+        <select class="inp" id="bkOwner">${staffOptions('',
+          list.length&&list.every(x=>x.cat===list[0].cat)?list[0].cat:'')}</select></div>
       <div class="rows" style="max-height:220px;overflow:auto;margin-bottom:18px">
         ${list.slice(0,40).map(i=>`<div class="row" style="cursor:default">
           <div class="mid"><b>${esc(i.name)}</b><span>${esc(i.code)} · เดิม ${esc(i.owner||'—')}</span></div>
