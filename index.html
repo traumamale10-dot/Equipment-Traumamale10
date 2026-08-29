@@ -2077,23 +2077,63 @@ async function imageOwnerReport(){
 async function reportCanvases(ow, rows, showPrice, showCheck, alive){
   const cm=checkMap();
   const logo=await loadImg(($('#brandLogo')||{}).src||'');
-  const M=11, MB=9;                        // ขอบซ้ายขวา / ล่าง
-  const W=210, H=297, IW=W-M*2;
+  /* เตรียมข้อความทุกช่องก่อน แล้วค่อยคำนวณความกว้างคอลัมน์จากของจริง */
+  const cm2=cm;
+  const heads=[['ลำดับ','c'],['ชื่อครุภัณฑ์','l'],['หมายเลขครุภัณฑ์','l'],
+               ['จุดวาง','l'],['สถานะ','c']];
+  if(showPrice) heads.push(['ราคา (บาท)','r']);
+  if(showCheck) heads.push(['ผลตรวจ','c']);
 
-  const cols=[['ลำดับ',.06,'c'],['ชื่อครุภัณฑ์',.31,'l'],['หมายเลขครุภัณฑ์',.20,'l'],
-              ['จุดวาง',.13,'l'],['สถานะ',.10,'c']];
-  if(showPrice) cols.push(['ราคา (บาท)',.11,'r']);
-  if(showCheck) cols.push(['ผลตรวจ',.09,'c']);
-  const wsum=cols.reduce((a,c)=>a+c[1],0);
-  cols.forEach(c=>c[1]=c[1]/wsum*IW);
+  const cellText=(it,k)=>{
+    const c2=chk(cm2,it);
+    const v=[String(k+1), it.name, it.code, it.loc||'—', it.status];
+    if(showPrice) v.push(it.price?baht(it.price):'—');
+    if(showCheck) v.push(c2?c2.result:'—');
+    return v;
+  };
+  const texts=rows.map(cellText);
+
+  const M=11, MB=9;                     // ขอบซ้ายขวา / ล่าง
+  const W=210, H=297, IW=W-M*2;
+  const CPAD=1.3;                                   // ระยะขอบในเซลล์ (มม.)
 
   const headH=22, whoH=13, sumH=showCheck?30:15;
   const bodyTop=M+headH+whoH+2;
   const bodyBottom=H-MB-sumH;
   const avail=bodyBottom-bodyTop;
 
-  const rowH=Math.max(4.0, Math.min(8.5, avail/(rows.length+1.4)));
-  const fs=Math.max(5.4, Math.min(11, rowH*2.8346*0.55));
+  /* ขนาดตัวอักษรต้องพอดีทั้งความสูงและความกว้าง */
+  const tmp=newPage(10,10).g;
+  const needAt=fsz=>{
+    const w=[];
+    heads.forEach((h,ci)=>{
+      font(tmp,fsz,600,'Prompt');
+      let mx=tmp.measureText(h[0]).width;
+      font(tmp,fsz,400);
+      texts.forEach(t=>{ mx=Math.max(mx, tmp.measureText(String(t[ci])).width); });
+      w.push(mx/PX + CPAD*2);
+    });
+    return w;
+  };
+
+  const rowH0=Math.max(3.8, Math.min(8.5, avail/(rows.length+1.4)));
+  let fs=Math.max(5.0, Math.min(11, rowH0*2.8346*0.55));
+  let widths=needAt(fs);
+  let sum=widths.reduce((a,b)=>a+b,0);
+  while(fs>4.6 && sum>IW){ fs-=0.2; widths=needAt(fs); sum=widths.reduce((a,b)=>a+b,0); }
+
+  /* เหลือที่ว่างก็แบ่งให้คอลัมน์ชื่อครุภัณฑ์กับจุดวางเป็นหลัก */
+  if(sum<IW){
+    const extra=IW-sum, share=[0,.55,.05,.30,.03,.04,.03];
+    widths=widths.map((w,i2)=>w+extra*(share[i2]||0));
+    const s2=widths.reduce((a,b)=>a+b,0);
+    widths=widths.map(w=>w/s2*IW);
+  }else{
+    widths=widths.map(w=>w/sum*IW);
+  }
+  const cols=heads.map((h,i2)=>[h[0],widths[i2],h[1]]);
+
+  const rowH=Math.max(fs/2.8346*1.55, 3.6);
   const perPage=Math.max(1, Math.floor((avail-rowH)/rowH));
   const nPages=Math.ceil(rows.length/perPage);
 
@@ -2113,11 +2153,12 @@ async function reportCanvases(ow, rows, showPrice, showCheck, alive){
       g.drawImage(logo, M*PX, y*PX, w*PX, h*PX);
     }
     const tx=M+(logo?20:0);
+    const titleW=(W-M-42-tx);        /* เว้นที่ให้ข้อความมุมขวา */
     g.fillStyle='#4E2C82'; font(g,15,600,'Prompt');
-    g.fillText('ทะเบียนครุภัณฑ์ในความรับผิดชอบ', tx*PX, (y+1)*PX);
+    g.fillText(clip(g,'ทะเบียนครุภัณฑ์ในความรับผิดชอบ',titleW*PX), tx*PX, (y+1)*PX);
     g.fillStyle='#444444'; font(g,9.5,400);
-    g.fillText('หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10 · โรงพยาบาลมหาราชนครราชสีมา',
-               tx*PX, (y+8)*PX);
+    g.fillText(clip(g,'หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10 · โรงพยาบาลมหาราชนครราชสีมา',
+               titleW*PX), tx*PX, (y+8)*PX);
     g.textAlign='right'; font(g,9,400);
     g.fillText('รอบตรวจ '+thMonth(S.month), (W-M)*PX, (y+1)*PX);
     g.fillText('พิมพ์เมื่อ '+today, (W-M)*PX, (y+6)*PX);
@@ -2150,7 +2191,7 @@ async function reportCanvases(ow, rows, showPrice, showCheck, alive){
         g.strokeRect(x*PX, y*PX, col[1]*PX, rowH*PX);
         g.fillStyle = bold ? '#4E2C82' : '#111111';
         font(g, fs, bold?600:400, bold?'Prompt':'Sarabun');
-        const pad=1.4, inner=(col[1]-pad*2)*PX;
+        const pad=CPAD, inner=(col[1]-pad*2)*PX;
         const t=clip(g, vals[ci], inner);
         const ty=(y+(rowH-fs/2.8346*1.25)/2)*PX;
         if(col[2]==='c'){ g.textAlign='center'; g.fillText(t,(x+col[1]/2)*PX,ty); }
@@ -2163,13 +2204,8 @@ async function reportCanvases(ow, rows, showPrice, showCheck, alive){
     };
     drawRow(cols.map(c=>c[0]), '#EFE6FB', true);
 
-    rows.slice(pg*perPage,(pg+1)*perPage).forEach((it,k)=>{
-      const c2=chk(cm,it);
-      const v=[String(pg*perPage+k+1), it.name, it.code, it.loc||'—', it.status];
-      if(showPrice) v.push(it.price?baht(it.price):'—');
-      if(showCheck) v.push(c2?c2.result:'—');
-      drawRow(v, (k%2)?'#FBF8FF':'#FFFFFF', false);
-    });
+    texts.slice(pg*perPage,(pg+1)*perPage).forEach((v,k)=>
+      drawRow(v, (k%2)?'#FBF8FF':'#FFFFFF', false));
 
     /* สรุปและช่องเซ็น เฉพาะหน้าสุดท้าย */
     if(pg===nPages-1){
