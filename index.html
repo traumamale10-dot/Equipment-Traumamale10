@@ -2111,7 +2111,7 @@ async function reportCanvases(ow, rows, showPrice, showCheck, alive){
       let mx=tmp.measureText(h[0]).width;
       font(tmp,fsz,400);
       texts.forEach(t=>{ mx=Math.max(mx, tmp.measureText(String(t[ci])).width); });
-      w.push(mx/PX + CPAD*2);
+      w.push(mx/PX + CPAD*2 + 1.0);      /* เผื่อไว้ 1 มม. กันตัวอักษรตัวท้ายถูกตัด */
     });
     return w;
   };
@@ -2131,9 +2131,19 @@ async function reportCanvases(ow, rows, showPrice, showCheck, alive){
   }else{
     widths=widths.map(w=>w/sum*IW);
   }
-  /* ปัดเศษแล้วชดเชยที่คอลัมน์ชื่อครุภัณฑ์ ให้ผลรวมเท่ากับพื้นที่พอดี */
-  widths=widths.map(w=>Math.floor(w*100)/100);
-  widths[1]+=IW-widths.reduce((a,b)=>a+b,0);
+  /* ปัดขึ้นทุกคอลัมน์ แล้วหักส่วนเกินออกจากคอลัมน์ชื่อครุภัณฑ์ซึ่งกว้างที่สุด
+     วิธีนี้ไม่มีคอลัมน์ไหนแคบลงจากที่วัดได้ ข้อความจึงไม่ถูกตัด */
+  widths=widths.map(w=>Math.ceil(w*100)/100);
+  const over=widths.reduce((a,b)=>a+b,0)-IW;
+  if(over>0) widths[1]=Math.max(20, widths[1]-over);
+  /* ตรวจซ้ำอีกชั้น ถ้ายังไม่พอดีให้ลดตัวอักษรแล้วคำนวณใหม่ */
+  let guard=40;
+  while(guard-- > 0 && widths.reduce((a,b)=>a+b,0) > IW + 0.01 && fs > 4.6){
+    fs=Math.round((fs-0.2)*10)/10;
+    widths=needAt(fs).map(w=>Math.ceil(w*100)/100);
+    const ov=widths.reduce((a,b)=>a+b,0)-IW;
+    if(ov>0) widths[1]=Math.max(20, widths[1]-ov);
+  }
   const cols=heads.map((h,i2)=>[h[0],widths[i2],h[1]]);
 
   const rowH=Math.max(fs/2.8346*1.55, 3.6);
