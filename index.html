@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:ital,wght@0,400;0,600;0,700;1,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ══════════ โทนสว่าง · ม่วงหรู ══════════ */
 :root{
@@ -619,6 +620,7 @@ select.inp{appearance:none;padding-right:38px;
       <div class="tools">
         <button class="btn go" onclick="buildStickers()">สร้างสติ๊กเกอร์</button>
         <button class="btn pri" onclick="doPrint()">พิมพ์</button>
+        <button class="btn go" onclick="saveStickerImages()">บันทึกเป็นรูปภาพ</button>
         <button class="btn" onclick="zoomBy(-.12)">ย่อ</button>
         <button class="btn" onclick="zoomBy(.12)">ขยาย</button>
         <button class="btn" onclick="fitZoom()">พอดีจอ</button>
@@ -727,6 +729,10 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key = it => it.cat + '|' + it.code;
+/* กุญแจสำหรับจับคู่บันทึกตรวจ/ส่งซ่อม — ตัดช่องว่างและตัวพิมพ์ออก
+   กันกรณีเลขครุภัณฑ์ในชีตเว้นวรรคไม่เท่ากัน */
+const nk = v => String(v==null?'':v).replace(/\s+/g,'').toLowerCase();
+const ck = it => it.cat + '|' + nk(it.code);
 const thMonth = mk => { const [y,m]=mk.split('-'); return TH_MONTH[+m-1] + ' ' + (+y+543); };
 const imgUrl = (id,w) => id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w'+(w||320) : '';
 const baht = v => (Number(v)||0).toLocaleString('th-TH',
@@ -907,10 +913,18 @@ $('#monthSel').onchange=async e=>{
 };
 
 /* ═════════ คำนวณ ═════════ */
-function checkMap(){ const m={}; S.checks.forEach(c=>m[c.cat+'|'+c.code]=c); return m; }
-function openFixMap(){ const m={};
-  S.fixes.forEach(f=>{ if(f.state!=='ซ่อมเสร็จ'&&f.state!=='ซ่อมไม่ได้') m[f.cat+'|'+f.code]=f; });
-  return m; }
+function checkMap(){
+  const m={};
+  S.checks.forEach(c=>{ m[c.cat+'|'+nk(c.code)]=c; m['|'+nk(c.code)]=c; });
+  return m;
+}
+/* หาผลตรวจของครุภัณฑ์ชิ้นหนึ่ง เผื่อกรณีคอลัมน์ประเภทไม่ตรง */
+function chk(cm,i){ return cm[ck(i)] || cm['|'+nk(i.code)]; }
+function openFixMap(){
+  const m={};
+  S.fixes.forEach(f=>{ if(f.state!=='ซ่อมเสร็จ'&&f.state!=='ซ่อมไม่ได้') m[f.cat+'|'+nk(f.code)]=f; });
+  return m;
+}
 const ALIVE = it => it.status!=='แทงจำหน่าย';
 function renderAll(){ renderDash(); renderStock(); renderCheck(); renderFix(); }
 
@@ -920,7 +934,7 @@ function renderKpis(){
   const box=(cat,label)=>{
     const all=S.items.filter(i=>!cat||i.cat===cat);
     const live=all.filter(ALIVE);
-    const done=live.filter(i=>cm[key(i)]).length;
+    const done=live.filter(i=>chk(cm,i)).length;
     const val=live.reduce((a,i)=>a+(Number(i.price)||0),0);
     const noPrice=live.filter(i=>!Number(i.price)).length;
     return `<button class="kpi" data-cat="${cat}">
@@ -966,7 +980,7 @@ function renderLookup(){
   const list=S.items.filter(i=>
     (!nm||i.name===nm) && (!ow||(i.owner||'ไม่ระบุผู้รับผิดชอบ')===ow));
   const live=list.filter(ALIVE);
-  const done=live.filter(i=>cm[key(i)]).length;
+  const done=live.filter(i=>chk(cm,i)).length;
   const bad=list.filter(i=>i.status==='ชำรุด'||i.status==='ไม่พบ').length;
   const off=list.filter(i=>!ALIVE(i)).length;
   $('#lookup').innerHTML=`
@@ -979,7 +993,7 @@ function renderLookup(){
       <div><b>${bahtShort(live.reduce((a,i)=>a+(Number(i.price)||0),0))}</b><span>มูลค่ารวม (บาท)</span></div>
     </div>
     <div class="rows">${list.slice(0,30).map(i=>{
-      const c=cm[key(i)], u=imgUrl(i.img);
+      const c=chk(cm,i), u=imgUrl(i.img);
       return `<button class="row" data-k="${esc(key(i))}">
         ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
            :`<div class="thumb"></div>`}
@@ -996,8 +1010,8 @@ function renderLookup(){
 function renderDash(){
   renderKpis(); renderLookup();
   const cm=checkMap(), of=openFixMap(), live=S.items.filter(ALIVE);
-  const done=live.filter(i=>cm[key(i)]).length;
-  const bad=live.filter(i=>{const c=cm[key(i)];
+  const done=live.filter(i=>chk(cm,i)).length;
+  const bad=live.filter(i=>{const c=chk(cm,i);
     return (c&&(c.result==='ชำรุด'||c.result==='ไม่พบ'))||i.status==='ชำรุด';}).length;
   const pct=live.length?Math.round(done/live.length*100):0;
   $('#dashSub').textContent=`รอบตรวจ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
@@ -1016,7 +1030,7 @@ function renderDash(){
 
   $('#byCat').innerHTML=['med','off'].map(c=>{
     const all=S.items.filter(i=>i.cat===c&&ALIVE(i));
-    const dn=all.filter(i=>cm[key(i)]).length;
+    const dn=all.filter(i=>chk(cm,i)).length;
     const p=all.length?Math.round(dn/all.length*100):0;
     return `<div style="margin-bottom:16px">
       <div class="stat" style="border:0;padding-bottom:4px">
@@ -1025,7 +1039,7 @@ function renderDash(){
   }).join('');
 
   const owe={};
-  S.items.filter(i=>ALIVE(i)&&!cm[key(i)]).forEach(i=>{
+  S.items.filter(i=>ALIVE(i)&&!chk(cm,i)).forEach(i=>{
     const o=i.owner||'ไม่ระบุผู้รับผิดชอบ'; owe[o]=(owe[o]||0)+1; });
   const top=Object.entries(owe).sort((a,b)=>b[1]-a[1]).slice(0,6);
   $('#topOwner').innerHTML=top.length
@@ -1081,10 +1095,10 @@ function matchList(){
     if(gr&&(i.grp||(i.cat==='off'?'pn':'nurse'))!==gr) return false;
     if(st&&i.status!==st) return false;
     if(ow&&i.owner!==ow) return false;
-    if(S.filter==='todo'&&(!ALIVE(i)||cm[key(i)])) return false;
-    if(S.filter==='done'&&!cm[key(i)]) return false;
+    if(S.filter==='todo'&&(!ALIVE(i)||chk(cm,i))) return false;
+    if(S.filter==='done'&&!chk(cm,i)) return false;
     if(S.filter==='broken'&&!(i.status==='ชำรุด'||i.status==='ไม่พบ')) return false;
-    if(S.filter==='fix'&&!of[key(i)]) return false;
+    if(S.filter==='fix'&&!of[ck(i)]) return false;
     if(q&&![i.name,i.code,i.ref,i.owner,i.loc,i.note].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1093,7 +1107,7 @@ function renderStock(){
   const list=matchList(), cm=checkMap();
   $('#stockSub').textContent=`พบ ${list.length} รายการ จากทั้งหมด ${S.items.length} รายการ`;
   const page=list.slice(0,S.shown);
-  $('#stockGrid').innerHTML=page.length?page.map(i=>card(i,cm[key(i)])).join('')
+  $('#stockGrid').innerHTML=page.length?page.map(i=>card(i,chk(cm,i))).join('')
     :`<div class="empty" style="grid-column:1/-1"><b>ไม่พบครุภัณฑ์ที่ตรงเงื่อนไข</b>
         ลองล้างตัวกรองหรือเปลี่ยนคำค้น</div>`;
   $('#more').style.display=list.length>S.shown?'inline-flex':'none';
@@ -1119,7 +1133,8 @@ function findItem(k){ return S.items.find(i=>key(i)===k); }
 function closeSheet(){ $('#scrim').classList.remove('on'); stopScan(); }
 function openItem(k){
   const i=findItem(k); if(!i) return;
-  const chk=checkMap()[k], fixes=S.fixes.filter(f=>f.cat+'|'+f.code===k);
+  const cm0=checkMap(); const chkNow=chk(cm0,i);
+  const fixes=S.fixes.filter(f=>f.cat===i.cat && nk(f.code)===nk(i.code));
   const u=imgUrl(i.img), doc=i.doc?'https://drive.google.com/file/d/'+i.doc+'/view':'';
   $('#sheet').innerHTML=`
     <div class="hd"><h4>${esc(i.name)}</h4><button class="x" onclick="closeSheet()">✕</button></div>
@@ -1136,8 +1151,8 @@ function openItem(k){
           :'<span style="color:var(--dim2)">ยังไม่ได้บันทึก</span>'}</dd>
         <dt>สถานะ</dt><dd><span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></dd>
         <dt>ใบคุม</dt><dd>${doc?`<a href="${doc}" target="_blank" rel="noopener">เปิดใบคุม</a>`:'ไม่มีไฟล์'}</dd>
-        <dt>ตรวจเดือนนี้</dt><dd>${chk
-          ?`<span class="tag t-ok">${esc(chk.result)}</span> โดย ${esc(chk.by||'—')}`
+        <dt>ตรวจเดือนนี้</dt><dd>${chkNow
+          ?`<span class="tag t-ok">${esc(chkNow.result)}</span> โดย ${esc(chkNow.by||'—')}`
           :`<span class="tag t-bad">ยังไม่ได้ตรวจ</span>`}</dd>
         ${i.note?`<dt>หมายเหตุ</dt><dd>${esc(i.note)}</dd>`:''}
       </dl>
@@ -1388,6 +1403,47 @@ async function submitBulkOwner(){
   }catch(e){ toast(e.message,'bad'); }
 }
 
+/* ═════════ บันทึกเป็นไฟล์รูปภาพ ═════════ */
+async function saveBlob(blob, filename){
+  try{
+    const file=new File([blob], filename, {type:blob.type||'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:filename});
+      toast('เลือก “บันทึกรูปภาพ” เพื่อเก็บลงคลังภาพในเครื่อง','good');
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  toast('บันทึกไฟล์ '+filename+' แล้ว','good');
+}
+
+/** วาดกล่อง HTML ที่ซ่อนอยู่ในหน้าพิมพ์ ให้กลายเป็นรูป PNG */
+async function nodeToPng(node, filename){
+  if(typeof html2canvas==='undefined')
+    return toast('โหลดตัวแปลงรูปไม่สำเร็จ ลองเชื่อมอินเทอร์เน็ตแล้วรีเฟรช','bad');
+  const host=$('#printRoot');
+  const keep=host.getAttribute('style')||'';
+  host.setAttribute('style','display:block;position:fixed;left:-20000px;top:0;'+
+                            'background:#fff;z-index:-1;pointer-events:none');
+  try{
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+    const canvas=await html2canvas(node,{scale:2,backgroundColor:'#ffffff',
+      useCORS:true,logging:false,windowWidth:node.scrollWidth});
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+    if(!blob) throw new Error('แปลงรูปไม่สำเร็จ');
+    await saveBlob(blob, filename);
+  }catch(e){
+    toast('สร้างรูปไม่สำเร็จ: '+(e.message||e),'bad');
+  }finally{
+    host.setAttribute('style',keep);
+  }
+}
+const safeName = t => String(t).replace(/[\/\\?%*:|"<>]/g,'-').trim();
+
 /* ═════════ ใบสรุปรายการของผู้รับผิดชอบ ═════════ */
 function openOwnerReport(){
   const cur=$('#fOwner').value||S.by||'';
@@ -1410,11 +1466,17 @@ function openOwnerReport(){
             แสดงผลตรวจเดือนนี้ และช่องเซ็นรับรอง</label>
         </div></div>
       <div id="rpInfo" class="note" style="margin-bottom:14px"></div>
-      <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
-        onclick="printOwnerReport()">สร้างใบสรุปและสั่งพิมพ์</button>
+      <div class="seg" style="gap:10px">
+        <button class="btn pri" style="flex:1;justify-content:center;padding:15px"
+          onclick="printOwnerReport()">พิมพ์ / บันทึก PDF</button>
+        <button class="btn go" style="flex:1;justify-content:center;padding:15px"
+          onclick="imageOwnerReport()">บันทึกเป็นรูปภาพ</button>
+      </div>
       <div class="note" style="margin-top:12px">
-        ในหน้าต่างพิมพ์ เลือกปลายทางเป็น <b>บันทึกเป็น PDF</b> เพื่อเก็บไฟล์
-        และเปิด <b>กราฟิกพื้นหลัง</b> เพื่อให้หัวตารางมีสี</div>
+        <b>บันทึกเป็นรูปภาพ</b> เหมาะกับมือถือ ระบบจะสร้างไฟล์ PNG แล้วเปิดหน้าต่างแชร์
+        ให้เลือก “บันทึกรูปภาพ” เพื่อเก็บลงคลังภาพ หรือส่งเข้า LINE ได้ทันที<br><br>
+        <b>พิมพ์ / บันทึก PDF</b> ในหน้าต่างพิมพ์ให้เลือกปลายทางเป็นบันทึกเป็น PDF
+        และเปิด กราฟิกพื้นหลัง เพื่อให้หัวตารางมีสี</div>
     </div>`;
   $('#rpOwner').addEventListener('change',rpPreview);
   $('#rpAlive').addEventListener('change',rpPreview);
@@ -1441,10 +1503,24 @@ function rpPreview(){
         : r.length>40 ? ' · ระบบจะย่อขนาดตัวอักษรให้พอดีหน้าเดียว' : '');
 }
 function printOwnerReport(){
+  const r=buildOwnerReport(); if(!r) return;
+  closeSheet();
+  if(r.overflow) toast('รายการมากเกินกว่าจะย่อลงหน้าเดียวได้ ระบบจะพิมพ์ต่อเป็นหน้าที่สอง','bad');
+  setTimeout(()=>window.print(),150);
+}
+async function imageOwnerReport(){
+  const r=buildOwnerReport(); if(!r) return;
+  closeSheet();
+  toast('กำลังสร้างรูปภาพ…');
+  await nodeToPng($('#printRoot').querySelector('.report'),
+    safeName('ครุภัณฑ์ '+r.owner+' '+thMonth(S.month))+'.png');
+}
+
+function buildOwnerReport(){
   const ow=$('#rpOwner').value;
-  if(!ow) return toast('กรุณาเลือกผู้รับผิดชอบ','bad');
+  if(!ow){ toast('กรุณาเลือกผู้รับผิดชอบ','bad'); return null; }
   const rows=rpRows();
-  if(!rows.length) return toast('ไม่พบครุภัณฑ์ของผู้รับผิดชอบคนนี้','bad');
+  if(!rows.length){ toast('ไม่พบครุภัณฑ์ของผู้รับผิดชอบคนนี้','bad'); return null; }
 
   const showPrice=$('#rpPrice').checked, showCheck=$('#rpCheck').checked;
   const cm=checkMap(), n=rows.length;
@@ -1459,7 +1535,7 @@ function printOwnerReport(){
   const fs   = Math.max(5.4, Math.min(11, (rowH - pad*2) * 2.8346 / 1.30));
   const overflow = (fs*1.30/2.8346 + pad*2) * (n+1.6) > AVAIL + 6;
 
-  const done=rows.filter(i=>cm[key(i)]).length;
+  const done=rows.filter(i=>chk(cm,i)).length;
   const bad=rows.filter(i=>i.status==='ชำรุด'||i.status==='ไม่พบ').length;
   const val=rows.reduce((a,i)=>a+(Number(i.price)||0),0);
   const today=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
@@ -1473,7 +1549,7 @@ function printOwnerReport(){
   if(showCheck) cols.push(['ผลตรวจ','10%']);
 
   const body=rows.map((i,k)=>{
-    const c=cm[key(i)];
+    const c=chk(cm,i);
     return `<tr>
       <td class="c">${k+1}</td>
       <td>${esc(i.name)}</td>
@@ -1526,9 +1602,7 @@ function printOwnerReport(){
       <div class="foot">พิมพ์จากระบบจัดการครุภัณฑ์ หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10</div>
     </div>`;
 
-  closeSheet();
-  if(overflow) toast('รายการมากเกินกว่าจะย่อลงหน้าเดียวได้ ระบบจะพิมพ์ต่อเป็นหน้าที่สอง','bad');
-  setTimeout(()=>window.print(),150);
+  return { owner:ow, count:n, overflow:overflow };
 }
 
 /* ═════════ ฟอร์มตรวจ ═════════ */
@@ -1536,15 +1610,15 @@ let ckState={k:'',result:'ปกติ'};
 function openCheck(k){
   const i=findItem(k); if(!i) return toast('ไม่พบครุภัณฑ์','bad');
   ckState={k,result:'ปกติ'};
-  const chk=checkMap()[k];
+  const chkNow=chk(checkMap(),i);
   $('#sheet').innerHTML=`
     <div class="hd"><h4>ตรวจครุภัณฑ์</h4><button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd">
       <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
         <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd>
         <dt>รอบตรวจ</dt><dd>${thMonth(S.month)}</dd></dl>
-      ${chk?`<div class="note" style="color:var(--warn);margin-bottom:16px">
-        เดือนนี้บันทึกไว้แล้วว่า “${esc(chk.result)}” — บันทึกซ้ำจะเพิ่มเป็นรายการใหม่</div>`:''}
+      ${chkNow?`<div class="note" style="color:var(--warn);margin-bottom:16px">
+        เดือนนี้บันทึกไว้แล้วว่า “${esc(chkNow.result)}” — บันทึกซ้ำจะเพิ่มเป็นรายการใหม่</div>`:''}
       <div class="field"><label>ผลการตรวจ</label>
         <div class="seg" id="ckSeg">${['ปกติ','ชำรุด','ไม่พบ','ถูกยืม'].map((v,n)=>
           `<button data-v="${v}" class="${n===0?'on':''}">${v}</button>`).join('')}</div></div>
@@ -1603,7 +1677,7 @@ function renderCheck(){
     if(ct&&i.cat!==ct) return false;
     return true;
   });
-  const done=scope.filter(i=>cm[key(i)]), todo=scope.filter(i=>!cm[key(i)]);
+  const done=scope.filter(i=>chk(cm,i)), todo=scope.filter(i=>!chk(cm,i));
   const p=scope.length?Math.round(done.length/scope.length*100):0;
 
   $('#checkSub').textContent=`รอบ ${thMonth(S.month)} · สแกน QR บนสติ๊กเกอร์ `+
@@ -1619,7 +1693,7 @@ function renderCheck(){
   const page=list.slice(0,S.ckShown);
 
   $('#checkList').innerHTML = list.length ? page.map(i=>{
-    const c=cm[key(i)],u=imgUrl(i.img);
+    const c=chk(cm,i),u=imgUrl(i.img);
     return `<button class="row" data-k="${esc(key(i))}">
       ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
         :`<div class="thumb"></div>`}
@@ -1869,6 +1943,16 @@ function updatePickCount(){
       (c>1?` × ซ้ำชิ้นละ ${c} ดวง`:'') +
       ` → พิมพ์ ${total} ดวง บนกระดาษ ${Math.ceil(total/per)} แผ่น (แผ่นละ ${per} ดวง)`
     : 'ยังไม่ได้เลือก — กดปุ่มเลือกทั้งหมด หรือแตะที่รูปด้านล่างทีละชิ้น';
+}
+async function saveStickerImages(){
+  const pages=$('#printRoot').querySelectorAll('.sheetbox');
+  if(!pages.length) return toast('กด “สร้างสติ๊กเกอร์” ก่อน','bad');
+  if($('#previewWrap').querySelector('.qr canvas'))
+    return toast('QR ยังสร้างไม่เสร็จ รออีกสักครู่','bad');
+  for(let i=0;i<pages.length;i++){
+    toast('กำลังสร้างรูปแผ่นที่ '+(i+1)+' จาก '+pages.length+'…');
+    await nodeToPng(pages[i], 'สติ๊กเกอร์ครุภัณฑ์-แผ่น'+(i+1)+'.png');
+  }
 }
 function doPrint(){
   const pr=$('#printRoot');
