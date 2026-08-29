@@ -362,6 +362,19 @@ select.inp{appearance:none;padding-right:38px;
 .skel{height:14px;border-radius:8px;background:linear-gradient(90deg,var(--lav-soft),#F7F2FF,var(--lav-soft));
   background-size:220% 100%;animation:shim 1.3s infinite linear}
 @keyframes shim{0%{background-position:120% 0}100%{background-position:-120% 0}}
+#busy{position:fixed;inset:0;z-index:250;display:none;align-items:center;justify-content:center;
+  background:rgba(44,31,69,.32)}
+#busy.on{display:flex}
+#busy .bx{background:var(--surface);border-radius:20px;padding:26px 34px;display:flex;
+  flex-direction:column;align-items:center;gap:14px;box-shadow:0 18px 50px rgba(44,31,69,.3);
+  min-width:190px}
+#busy svg{width:44px;height:44px;transform:rotate(-90deg)}
+#busy .tr{fill:none;stroke:var(--lav-soft);stroke-width:5}
+#busy .mv{fill:none;stroke:var(--plum);stroke-width:5;stroke-linecap:round;
+  stroke-dasharray:107;stroke-dashoffset:80;transform-origin:22px 22px;
+  animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#busy span{font-family:var(--f-d);font-weight:500;font-size:16px;color:var(--ink)}
 #toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,90px);z-index:300;
   background:var(--ink);color:#fff;border-radius:15px;padding:14px 24px;font-size:16px;opacity:0;
   transition:.3s;pointer-events:none;max-width:90vw;text-align:center;box-shadow:var(--sh2)}
@@ -768,6 +781,10 @@ select.inp{appearance:none;padding-right:38px;
 
 <div class="scrim" id="scrim" onclick="if(event.target===this)closeSheet()">
   <div class="sheet" id="sheet"></div></div>
+<div id="busy"><div class="bx">
+  <svg viewBox="0 0 44 44"><circle class="tr" cx="22" cy="22" r="17"/>
+    <circle class="mv" cx="22" cy="22" r="17"/></svg>
+  <span id="busyTx">กำลังบันทึก…</span></div></div>
 <div id="toast"></div>
 <div id="printRoot"></div>
 
@@ -871,20 +888,43 @@ function jsonp(params){
 function newNonce(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 }
+/* ข้อความบนหน้ากาก แยกตามคำสั่ง เพื่อให้รู้ว่ากำลังทำอะไรอยู่ */
+const BUSY_TEXT={
+  saveCheck:'กำลังบันทึกผลตรวจ…', saveLoan:'กำลังบันทึกการยืม…',
+  closeLoan:'กำลังบันทึกการรับคืน…', saveFix:'กำลังบันทึกการส่งซ่อม…',
+  closeFix:'กำลังปิดงานซ่อม…',      updateItem:'กำลังบันทึกข้อมูล…',
+  bulkOwner:'กำลังเปลี่ยนผู้รับผิดชอบ…', uploadFile:'กำลังอัปโหลดไฟล์…',
+  ocrPrice:'กำลังอ่านใบคุม…',        rebuildIndex:'กำลังทำดัชนีรูปภาพ…',
+  setWard:'กำลังบันทึกพิกัด…'
+};
+let busyN=0;
+function busyOn(t){
+  busyN++;
+  $('#busyTx').textContent=t||'กำลังบันทึก…';
+  $('#busy').classList.add('on');
+}
+function busyOff(){
+  busyN=Math.max(0,busyN-1);
+  if(!busyN) $('#busy').classList.remove('on');
+}
+
 async function api(action,params){
   if(!S.api) throw new Error('ยังไม่ได้ตั้งค่า URL ของ Web App');
   const p=Object.assign({action,pin:S.pin,nonce:newNonce()},params||{});
-  let d=null;
+  busyOn(BUSY_TEXT[action]);
   try{
-    const r=await fetch(S.api,{method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)});
-    d=await r.json();
-  }catch(e){
-    /* ส่งซ้ำเฉพาะกรณีที่ไม่ได้รับคำตอบกลับมาเลย */
-    d=await jsonp(p);
-  }
-  if(!d||!d.ok) throw new Error((d&&d.error)||'บันทึกไม่สำเร็จ');
-  return d;
+    let d=null;
+    try{
+      const r=await fetch(S.api,{method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)});
+      d=await r.json();
+    }catch(e){
+      /* ส่งซ้ำเฉพาะกรณีที่ไม่ได้รับคำตอบกลับมาเลย */
+      d=await jsonp(p);
+    }
+    if(!d||!d.ok) throw new Error((d&&d.error)||'บันทึกไม่สำเร็จ');
+    return d;
+  } finally { busyOff(); }
 }
 
 /* ═════════ นำทาง ═════════ */
@@ -1011,12 +1051,14 @@ function showConn(msg){
 }
 async function reload(){
   $('#led').className='led';
+  busyOn('กำลังดึงข้อมูลล่าสุด…');
   try{
     const d=await jsonp({action:'bootstrap',month:S.month,fresh:'1'});
     apply(d); saveSnap(d);
     $('#conn').classList.remove('on');
     toast('อัปเดตข้อมูลแล้ว','good'); $('#led').className='led ok';
   }catch(e){ toast(e.message,'bad'); showConn(e.message); }
+  finally{ busyOff(); }
 }
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
@@ -1049,8 +1091,10 @@ function buildMonths(){
 }
 $('#monthSel').onchange=async e=>{
   S.month=e.target.value;
+  busyOn('กำลังเปลี่ยนรอบเดือน…');
   try{ const d=await jsonp({action:'bootstrap',month:S.month}); apply(d); saveSnap(d); }
   catch(err){ toast(err.message,'bad'); }
+  finally{ busyOff(); }
 };
 
 /* ═════════ คำนวณ ═════════ */
@@ -1421,10 +1465,16 @@ function ownerList(){
   const o={}; S.items.forEach(i=>{ if(i.owner) o[i.owner]=1; });
   return Object.keys(o).sort((a,b)=>a.localeCompare(b,'th'));
 }
-function apiPost(action,params){
-  return fetch(S.api,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(Object.assign({action,pin:S.pin},params||{}))})
-    .then(r=>r.json()).then(d=>{ if(!d.ok) throw new Error(d.error||'ทำรายการไม่สำเร็จ'); return d; });
+async function apiPost(action,params){
+  busyOn(BUSY_TEXT[action]);
+  try{
+    const r=await fetch(S.api,{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(Object.assign({action,pin:S.pin,nonce:newNonce()},params||{}))});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'ทำรายการไม่สำเร็จ');
+    return d;
+  } finally { busyOff(); }
 }
 /* ย่อรูปก่อนส่ง เพื่อไม่ให้ไฟล์ใหญ่เกินและอัปโหลดไว */
 function fileToJpeg(file,max,q){
@@ -1663,6 +1713,7 @@ async function saveBlob(blob, filename){
 async function nodeToPng(node, filename){
   if(typeof html2canvas==='undefined')
     return toast('โหลดตัวแปลงรูปไม่สำเร็จ ลองเชื่อมอินเทอร์เน็ตแล้วรีเฟรช','bad');
+  busyOn('กำลังสร้างรูปภาพ…');
   const host=$('#printRoot');
   const keep=host.getAttribute('style')||'';
   host.setAttribute('style','display:block;position:fixed;left:-20000px;top:0;'+
@@ -1678,6 +1729,7 @@ async function nodeToPng(node, filename){
     toast('สร้างรูปไม่สำเร็จ: '+(e.message||e),'bad');
   }finally{
     host.setAttribute('style',keep);
+    busyOff();
   }
 }
 const safeName = t => String(t).replace(/[\/\\?%*:|"<>]/g,'-').trim();
