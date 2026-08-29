@@ -101,35 +101,79 @@ p.vs{margin:0 0 24px;color:var(--dim);font-size:15.5px}
 .card h3{margin:0 0 16px;font-family:var(--f-d);font-size:15px;font-weight:600;
   letter-spacing:.3px;color:var(--plum)}
 
-.signal{position:relative;overflow:hidden;border-radius:24px;margin-bottom:18px;padding:26px 28px 10px;
-  background:linear-gradient(140deg,#FFFFFF 0%,#F6EFFF 58%,#EFE4FE 100%);
-  border:1px solid var(--line2);box-shadow:var(--sh2)}
-.signal::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(90deg,rgba(107,63,160,.045) 0 1px,transparent 1px 46px),
-             repeating-linear-gradient(0deg,rgba(107,63,160,.045) 0 1px,transparent 1px 46px)}
-.signal .top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:26px;position:relative;z-index:1}
-.signal .big{font-family:var(--f-d);font-weight:700;font-size:74px;line-height:.88;
-  letter-spacing:-3px;color:var(--plum)}
-.signal .big i{font-style:normal;font-size:28px;color:var(--lav);letter-spacing:0}
-.signal .lab{font-size:13px;letter-spacing:2px;color:var(--dim);font-family:var(--f-d);
-  font-weight:500;margin-bottom:10px}
-.vitals{display:flex;gap:28px;flex-wrap:wrap;margin-bottom:10px}
-.vitals div{font-size:14px;color:var(--dim)}
-.vitals b{display:block;font-size:28px;font-family:var(--f-d);font-weight:600;color:var(--ink);
-  line-height:1.2}
-.vitals .g b{color:var(--ok)} .vitals .r b{color:var(--bad)} .vitals .y b{color:var(--warn)}
-.trace{width:100%;height:96px;display:block;position:relative;z-index:1}
-.trace .done{fill:none;stroke:var(--plum);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
-.trace .todo{fill:none;stroke:var(--bad);stroke-width:1.8;opacity:.5;stroke-dasharray:6 6}
-.trace .grid{stroke:rgba(107,63,160,.14);stroke-width:1}
+.hero{position:relative;overflow:hidden;border-radius:26px;margin-bottom:16px;padding:24px 26px 18px;
+  background:linear-gradient(135deg,#5A3391 0%,#7A51BC 48%,#A97FE6 100%);
+  box-shadow:0 18px 46px rgba(76,44,124,.32);color:#fff}
+.hero::before{content:'';position:absolute;inset:-40% -10% auto auto;width:52%;aspect-ratio:1;
+  border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 62%);
+  animation:float 9s ease-in-out infinite}
+.hero::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 54px),
+             repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 54px);
+  mask-image:linear-gradient(200deg,#000,transparent 72%)}
+@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(-14px,16px)}}
+.hero .row{position:relative;z-index:2;display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.gauge{width:158px;height:158px;flex:none;position:relative}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge .bgc{fill:none;stroke:rgba(255,255,255,.2);stroke-width:11}
+.gauge .fgc{fill:none;stroke:url(#gg);stroke-width:11;stroke-linecap:round;
+  transition:stroke-dashoffset 1.1s cubic-bezier(.2,.9,.3,1)}
+.gauge .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.gauge .mid b{font-family:var(--f-d);font-weight:700;font-size:42px;line-height:1;letter-spacing:-2px}
+.gauge .mid b i{font-style:normal;font-size:17px;opacity:.75;letter-spacing:0}
+.gauge .mid span{display:block;font-size:11.5px;opacity:.8;letter-spacing:1.6px;margin-top:2px;
+  font-family:var(--f-d)}
+.hero .info{flex:1;min-width:210px}
+.hero .info h4{margin:0 0 3px;font-family:var(--f-d);font-weight:600;font-size:20px}
+.hero .info p{margin:0 0 14px;font-size:14px;opacity:.85}
+.chips-hero{display:flex;gap:9px;flex-wrap:wrap}
+.chip-hero{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+  border-radius:14px;padding:9px 15px;min-width:96px;backdrop-filter:blur(6px);transition:.18s}
+.chip-hero:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
+.chip-hero b{display:block;font-family:var(--f-d);font-weight:600;font-size:23px;line-height:1.15}
+.chip-hero span{font-size:12.5px;opacity:.85}
+.hero .trace{width:100%;height:64px;margin-top:14px;position:relative;z-index:2;display:block}
+.hero .trace .done{fill:none;stroke:#C6FFE9;stroke-width:2.2;stroke-linejoin:round;
+  stroke-linecap:round;filter:drop-shadow(0 0 6px rgba(198,255,233,.7))}
+.hero .trace .todo{fill:none;stroke:rgba(255,255,255,.42);stroke-width:1.6;stroke-dasharray:5 6}
+.pulse{position:absolute;width:9px;height:9px;border-radius:50%;background:#C6FFE9;
+  box-shadow:0 0 12px #C6FFE9;z-index:3;pointer-events:none}
+
 
 .bento{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
 .kpi{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:20px 22px;
   box-shadow:var(--sh);text-align:left;transition:.18s;display:block;width:100%}
 .kpi:hover{border-color:var(--lav);transform:translateY(-3px);box-shadow:var(--sh2)}
+.kpi{position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;right:-30px;bottom:-30px;width:110px;height:110px;
+  border-radius:50%;background:radial-gradient(circle,var(--lav-soft),transparent 68%);
+  transition:.3s}
+.kpi:hover::after{transform:scale(1.25)}
 .kpi .n{font-family:var(--f-d);font-weight:700;font-size:40px;line-height:1;color:var(--plum);
-  letter-spacing:-1.5px}
+  letter-spacing:-1.5px;position:relative;z-index:1}
+.kpi .l,.kpi .s{position:relative;z-index:1}
+.spark{display:block;width:100%;height:26px;margin-top:8px;position:relative;z-index:1}
+
+/* วงกลมสัดส่วนสถานะ */
+.donut{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.donut svg{width:132px;height:132px;flex:none;transform:rotate(-90deg)}
+.donut .seg{fill:none;stroke-width:16;transition:stroke-dasharray 1s cubic-bezier(.2,.9,.3,1)}
+.donut .legend{flex:1;min-width:150px;display:grid;gap:7px}
+.donut .legend div{display:flex;align-items:center;gap:9px;font-size:14.5px}
+.donut .legend i{width:11px;height:11px;border-radius:4px;flex:none}
+.donut .legend b{margin-left:auto;font-family:var(--f-d);font-weight:600}
+
+/* อันดับผู้รับผิดชอบ */
+.rank{display:grid;gap:11px}
+.rank .r{display:grid;grid-template-columns:26px 1fr auto;gap:11px;align-items:center;font-size:14.5px}
+.rank .r em{font-style:normal;font-family:var(--f-d);font-weight:700;color:var(--lav);
+  text-align:center;font-size:15px}
+.rank .r .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .r .bw{grid-column:2/4;height:7px;border-radius:9px;background:var(--lav-soft);overflow:hidden}
+.rank .r .bw i{display:block;height:100%;border-radius:9px;
+  background:linear-gradient(90deg,var(--bad),#FF9DB2);transition:width .9s cubic-bezier(.2,.9,.3,1)}
+.rank .r b{font-family:var(--f-d);font-weight:600;color:var(--bad)}
 .kpi .l{font-size:15px;color:var(--dim);margin-top:6px}
 .kpi .s{font-size:13.5px;color:var(--dim2);margin-top:2px}
 .lookHead{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 14px}
@@ -357,11 +401,7 @@ select.inp{appearance:none;padding-right:38px;
   nav.rail button{width:auto;flex:1;padding:8px 2px;font-size:11px;border-radius:13px}
   nav.rail button svg{width:21px;height:21px}
   h2.vt{font-size:23px} p.vs{font-size:14.5px;margin-bottom:18px}
-  .signal{padding:20px 18px 6px;border-radius:20px}
-  .signal .big{font-size:54px;letter-spacing:-2px}
-  .signal .top{gap:16px}
-  .vitals{gap:18px} .vitals b{font-size:23px} .vitals div{font-size:13px}
-  .card{padding:18px}
+        .vitals{gap:18px} .vitals b{font-size:23px}   .card{padding:18px}
   .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
   .item .nm{font-size:14.5px} .item .cd{font-size:13px} .item .ow{font-size:13px}
   .kv{grid-template-columns:96px 1fr;font-size:15px}
@@ -446,20 +486,38 @@ select.inp{appearance:none;padding-right:38px;
 
   <section class="view on" id="v-dash">
     <h2 class="vt">ภาพรวมหน่วยงาน</h2>
-    <p class="vs" id="dashSub">กำลังอ่านทะเบียนครุภัณฑ์…</p>
+    <p class="vs" id="dashHint">แตะการ์ดเพื่อดูรายละเอียด</p>
     <div id="conn"><b>เชื่อมต่อฐานข้อมูลไม่สำเร็จ</b>
       <span id="connMsg"></span>
       <div style="margin-top:12px;display:flex;gap:9px;flex-wrap:wrap">
         <button class="btn" onclick="reload()">ลองใหม่</button>
         <button class="btn" onclick="go('setup')">ไปหน้าตั้งค่า</button></div></div>
-    <div class="signal">
-      <div class="top">
-        <div><div class="lab">ความคืบหน้าการตรวจ</div>
-          <div class="big"><span id="pct">0</span><i>%</i></div></div>
-        <div class="vitals" id="vitals"></div>
+    <div class="hero">
+      <div class="row">
+        <div class="gauge">
+          <svg viewBox="0 0 120 120">
+            <defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#C6FFE9"/><stop offset="1" stop-color="#FFE8A3"/>
+            </linearGradient></defs>
+            <circle class="bgc" cx="60" cy="60" r="50"/>
+            <circle class="fgc" id="gaugeArc" cx="60" cy="60" r="50"
+                    stroke-dasharray="314" stroke-dashoffset="314"/>
+          </svg>
+          <div class="mid"><div>
+            <b><span id="pct">0</span><i>%</i></b>
+            <span>ตรวจแล้ว</span>
+          </div></div>
+        </div>
+        <div class="info">
+          <h4 id="heroTitle">ความคืบหน้าการตรวจสอบ</h4>
+          <p id="dashSub">กำลังอ่านทะเบียนครุภัณฑ์…</p>
+          <div class="chips-hero" id="vitals"></div>
+        </div>
       </div>
-      <svg class="trace" id="trace" viewBox="0 0 600 96" preserveAspectRatio="none"></svg>
+      <svg class="trace" id="trace" viewBox="0 0 600 64" preserveAspectRatio="none"></svg>
+      <div class="pulse" id="pulse" style="display:none"></div>
     </div>
+
     <div class="kpis" id="kpis"></div>
 
     <div class="card" style="margin-bottom:16px">
@@ -473,9 +531,9 @@ select.inp{appearance:none;padding-right:38px;
     </div>
 
     <div class="bento">
-      <div class="card"><h3>สถานะครุภัณฑ์</h3><div id="byStatus"></div></div>
+      <div class="card"><h3>สัดส่วนสถานะครุภัณฑ์</h3><div class="donut" id="byStatus"></div></div>
       <div class="card"><h3>แยกตามประเภท</h3><div id="byCat"></div></div>
-      <div class="card"><h3>ค้างตรวจมากที่สุด</h3><div id="topOwner"></div></div>
+      <div class="card"><h3>ค้างตรวจมากที่สุด</h3><div class="rank" id="topOwner"></div></div>
       <div class="card"><h3>งานซ่อมที่ยังไม่ปิด</h3><div id="openFix"></div></div>
     </div>
   </section>
@@ -652,6 +710,22 @@ select.inp{appearance:none;padding-right:38px;
         <a class="btn" id="openExec" target="_blank" rel="noopener">เปิด URL นี้ในแท็บใหม่</a>
       </div>
       <div class="hr"></div>
+      <h3>ตำแหน่งอ้างอิงของหน่วยงาน</h3>
+      <div id="wardBox" class="note" style="margin-bottom:12px"></div>
+      <div class="field"><label>รัศมีที่ถือว่าอยู่ในพื้นที่ (เมตร)</label>
+        <input class="inp" id="wardR" type="number" min="20" max="1000" step="10"
+               style="max-width:160px"></div>
+      <div class="tools">
+        <button class="btn pri" onclick="setWardHere()">ตั้งพิกัดจากตำแหน่งปัจจุบัน</button>
+      </div>
+      <p class="note" style="margin-top:10px">
+        ยืนหน้าหอผู้ป่วยแล้วกดปุ่มนี้หนึ่งครั้ง ระบบจะจำพิกัดไว้เป็นจุดอ้างอิง
+        ทุกครั้งที่มีการบันทึกผลตรวจ จะบันทึกพิกัดขณะนั้นและระยะห่างจากจุดนี้ลงชีตด้วย<br><br>
+        <b>ข้อจำกัดที่ควรทราบ</b> GPS ในอาคารคลาดเคลื่อนได้ตั้งแต่ 20 ถึงเกิน 100 เมตร
+        และแยกชั้นไม่ได้ จึงใช้ยืนยันได้แค่ว่าอยู่บริเวณโรงพยาบาล ไม่ใช่หลักฐานว่ายืนอยู่หน้าเครื่องจริง
+        ตัวที่บอกได้ดีกว่าคือคอลัมน์ วิธีตรวจ ซึ่งแยกว่าสแกน QR หรือกดเลือกจากรายการ</p>
+
+      <div class="hr"></div>
       <p class="note">รูปครุภัณฑ์ดึงจากโฟลเดอร์ Google Drive ที่ผูกไว้ ถ้ารูปไม่ขึ้น
         ให้เปิดสิทธิ์โฟลเดอร์เป็น “ผู้ที่มีลิงก์ · ผู้อ่าน” แล้วกดสร้างดัชนีรูปภาพใหม่<br><br>
         ลิงก์ใน QR ควรเป็น URL ถาวรของหน้านี้ เพื่อให้สติ๊กเกอร์ที่พิมพ์แล้วยังใช้ได้แม้ Deploy ใหม่</p>
@@ -679,8 +753,8 @@ const S = {
   api: store.get('kp.api') || DEFAULT_API,
   base: store.get('kp.base') || (location.origin + location.pathname),
   by: store.get('kp.by') || '',
-  pin: store.get('kp.pin') || '',
-  items:[], checks:[], fixes:[], staff:[], roles:{}, month:'',
+  pin: '',
+  items:[], checks:[], fixes:[], staff:[], roles:{}, ward:null, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6
 };
@@ -802,7 +876,7 @@ function saveSetup(){
   S.api=$('#setUrl').value.trim(); store.set('kp.api',S.api);
   S.base=$('#setBase').value.trim()||(location.origin+location.pathname); store.set('kp.base',S.base);
   S.by=$('#setBy').value.trim();  store.set('kp.by',S.by);
-  S.pin=$('#setPin').value.trim(); store.set('kp.pin',S.pin);
+  S.pin=$('#setPin').value.trim();
   $('#inspector').value=S.by;
   toast('บันทึกการตั้งค่าแล้ว','good');
 }
@@ -830,6 +904,31 @@ async function testConn(){
       '2. ถ้าเจอข้อความ “ไม่รู้จักคำสั่ง” แปลว่าหลังบ้านทำงานปกติ ให้ตรวจว่าคัดลอก URL มาครบไม่ขาดตัวอักษร<br>'+
       '3. หลังแก้ Code.gs ทุกครั้งต้อง Deploy > Manage deployments > แก้ไข > Version: New version > Deploy';
   }
+}
+function renderWard(){
+  const w=S.ward||{};
+  $('#wardR').value=w.radius||150;
+  $('#wardBox').innerHTML = w.lat
+    ? `จุดอ้างอิงปัจจุบัน <b style="color:var(--plum)">${(+w.lat).toFixed(6)},
+       ${(+w.lng).toFixed(6)}</b> · รัศมี ${w.radius||150} ม.` +
+      (w.setAt?`<br>ตั้งเมื่อ ${esc(w.setAt)}`:'')
+    : '<span style="color:var(--warn)">ยังไม่ได้ตั้งพิกัดหน่วยงาน</span>' +
+      ' ระบบจะบันทึกพิกัดขณะตรวจไว้ แต่จะยังบอกไม่ได้ว่าอยู่ในพื้นที่หรือไม่';
+}
+async function setWardHere(){
+  if(!S.pin){
+    const v=prompt('กรอกรหัสยืนยันการแก้ไข');
+    if(!v) return; S.pin=v.trim();
+  }
+  toast('กำลังอ่านตำแหน่ง…');
+  const pos=await getPos(12000);
+  if(!pos) return toast('อ่านตำแหน่งไม่ได้ ตรวจว่าอนุญาตให้เว็บใช้ตำแหน่งแล้วหรือยัง','bad');
+  try{
+    const d=await api('setWard',{lat:pos.lat,lng:pos.lng,
+      radius:$('#wardR').value,by:S.by});
+    S.ward=d.ward; renderWard();
+    toast('ตั้งพิกัดหน่วยงานแล้ว (ความแม่นยำ ±'+pos.acc+' ม.)','good');
+  }catch(e){ toast(e.message,'bad'); }
 }
 async function rebuildIndex(){
   try{ const d=await api('rebuildIndex'); toast('ทำดัชนีรูปภาพแล้ว '+d.count+' ไฟล์','good'); }
@@ -881,7 +980,7 @@ async function reload(){
 }
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
-  S.staff=d.staff||S.staff; S.roles=d.roles||S.roles;
+  S.staff=d.staff||S.staff; S.roles=d.roles||S.roles; S.ward=d.ward||S.ward;
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
   fillSelect('#fOwner',d.owners,'ทุกผู้รับผิดชอบ');
   fillSelect('#sOwner',d.owners,'ทุกผู้รับผิดชอบ');
@@ -890,6 +989,7 @@ function apply(d){
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
   $('#inspector').innerHTML=staffOptions(S.by);
+  renderWard();
   renderAll();
 }
 function fillSelect(sel,list,first){
@@ -1007,46 +1107,102 @@ function renderLookup(){
   $$('#lookup .row').forEach(el=>el.onclick=()=>openItem(el.dataset.k));
 }
 
+/* นับเลขวิ่งขึ้น ให้ตัวเลขมีชีวิต */
+function countUp(el, to, ms){
+  if(!el) return;
+  const from = parseFloat(el.dataset.v||'0')||0;
+  el.dataset.v = to;
+  if(from===to){ el.textContent=to; return; }
+  const t0=performance.now(), dur=ms||900;
+  (function step(t){
+    const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3);
+    el.textContent=Math.round(from+(to-from)*e);
+    if(k<1) requestAnimationFrame(step);
+  })(t0);
+}
+
 function renderDash(){
   renderKpis(); renderLookup();
   const cm=checkMap(), of=openFixMap(), live=S.items.filter(ALIVE);
   const done=live.filter(i=>chk(cm,i)).length;
   const bad=live.filter(i=>{const c=chk(cm,i);
     return (c&&(c.result==='ชำรุด'||c.result==='ไม่พบ'))||i.status==='ชำรุด';}).length;
+  const borrowed=live.filter(i=>i.status==='ถูกยืม').length;
   const pct=live.length?Math.round(done/live.length*100):0;
-  $('#dashSub').textContent=`รอบตรวจ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
-    `(ไม่รวมแทงจำหน่าย ${S.items.length-live.length} รายการ)`;
-  $('#pct').textContent=pct;
-  $('#vitals').innerHTML=`
-    <div class="g"><b>${done}</b>ตรวจแล้ว</div>
-    <div class="r"><b>${live.length-done}</b>ค้างตรวจ</div>
-    <div class="y"><b>${Object.keys(of).length}</b>อยู่ระหว่างซ่อม</div>
-    <div class="r"><b>${bad}</b>ชำรุด/ไม่พบ</div>`;
+
+  $('#dashSub').textContent=`รอบ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
+    `· เหลืออีก ${live.length-done} รายการ`;
+  $('#heroTitle').textContent = pct===100
+    ? 'ตรวจครบทุกรายการแล้ว' : pct>=70 ? 'ใกล้ครบแล้ว อีกนิดเดียว'
+    : pct>0 ? 'ความคืบหน้าการตรวจสอบ' : 'ยังไม่เริ่มตรวจรอบนี้';
+  countUp($('#pct'), pct);
+
+  /* วงแหวนความคืบหน้า */
+  const arc=$('#gaugeArc'), C=2*Math.PI*50;
+  if(arc){ arc.style.strokeDasharray=C;
+           arc.style.strokeDashoffset=C*(1-pct/100); }
+
+  $('#vitals').innerHTML=[
+    ['ตรวจแล้ว',done],['ค้างตรวจ',live.length-done],
+    ['อยู่ระหว่างซ่อม',Object.keys(of).length],
+    ['ถูกยืม',borrowed],['ชำรุด/ไม่พบ',bad]
+  ].map(([l,v])=>`<div class="chip-hero"><b data-n>${v}</b><span>${l}</span></div>`).join('');
+  $$('#vitals b[data-n]').forEach((el,k)=>{
+    const v=+el.textContent; el.textContent='0'; setTimeout(()=>countUp(el,v,700),k*70);
+  });
   drawTrace(pct);
 
+  /* วงกลมสัดส่วนสถานะ */
+  const COL={'มีของ':'#1F8A63','ถูกยืม':'#B4781A','ส่งซ่อม':'#7A51BC',
+             'ชำรุด':'#C4405F','ไม่พบ':'#E0698A','แทงจำหน่าย':'#9B90AE'};
   const byS={}; S.items.forEach(i=>byS[i.status]=(byS[i.status]||0)+1);
-  $('#byStatus').innerHTML=Object.entries(byS).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
-    `<div class="stat"><span class="tag ${statusTag(k)}">${esc(k)}</span><b>${v}</b></div>`).join('');
+  const ent=Object.entries(byS).sort((a,b)=>b[1]-a[1]);
+  const tot=ent.reduce((a,x)=>a+x[1],0)||1, R=52, CC=2*Math.PI*R;
+  let off=0;
+  $('#byStatus').innerHTML=
+    `<svg viewBox="0 0 132 132">${ent.map(([k,v])=>{
+      const len=CC*v/tot, dash=`${len} ${CC-len}`, o=-off; off+=len;
+      return `<circle class="seg" cx="66" cy="66" r="${R}"
+        stroke="${COL[k]||'#9C77DA'}" stroke-dasharray="${dash}" stroke-dashoffset="${o}"/>`;
+    }).join('')}</svg>
+    <div class="legend">${ent.map(([k,v])=>
+      `<div><i style="background:${COL[k]||'#9C77DA'}"></i>${esc(k)}
+        <b>${v}</b><span style="color:var(--dim2);font-size:13px;margin-left:6px">
+        ${Math.round(v/tot*100)}%</span></div>`).join('')}</div>`;
 
+  /* แยกตามประเภท */
   $('#byCat').innerHTML=['med','off'].map(c=>{
     const all=S.items.filter(i=>i.cat===c&&ALIVE(i));
     const dn=all.filter(i=>chk(cm,i)).length;
     const p=all.length?Math.round(dn/all.length*100):0;
     return `<div style="margin-bottom:16px">
       <div class="stat" style="border:0;padding-bottom:4px">
-        <span>${c==='med'?'ทางการแพทย์':'สำนักงาน'}</span><b>${dn}/${all.length}</b></div>
-      <div class="meter"><i style="width:${p}%"></i></div></div>`;
+        <span>${c==='med'?'ทางการแพทย์':'สำนักงาน'}</span>
+        <b>${dn}/${all.length} <span style="color:var(--dim2);font-size:14px">${p}%</span></b></div>
+      <div class="meter"><i style="width:0%"></i></div></div>`;
   }).join('');
+  setTimeout(()=>$$('#byCat .meter i').forEach((el,k)=>{
+    const all=S.items.filter(i=>i.cat===(k?'off':'med')&&ALIVE(i));
+    const dn=all.filter(i=>chk(cm,i)).length;
+    el.style.width=(all.length?Math.round(dn/all.length*100):0)+'%';
+  }),60);
 
+  /* อันดับผู้รับผิดชอบที่ค้างมากสุด */
   const owe={};
   S.items.filter(i=>ALIVE(i)&&!chk(cm,i)).forEach(i=>{
     const o=i.owner||'ไม่ระบุผู้รับผิดชอบ'; owe[o]=(owe[o]||0)+1; });
   const top=Object.entries(owe).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  $('#topOwner').innerHTML=top.length
-    ? top.map(([k,v])=>`<div class="stat"><span>${esc(k)}</span>
-        <b style="color:var(--bad)">${v}</b></div>`).join('')
+  const mx=top.length?top[0][1]:1;
+  $('#topOwner').innerHTML= top.length
+    ? top.map(([k,v],n)=>`<div class="r">
+        <em>${n+1}</em><span class="nm">${esc(k)}</span><b>${v}</b>
+        <div class="bw"><i style="width:0%" data-w="${Math.round(v/mx*100)}"></i></div>
+      </div>`).join('')
     : '<div class="note">ตรวจครบทุกรายการแล้ว</div>';
+  setTimeout(()=>$$('#topOwner .bw i').forEach((el,k)=>
+    setTimeout(()=>el.style.width=el.dataset.w+'%',k*80)),60);
 
+  /* งานซ่อมค้าง */
   const ofs=Object.values(of);
   $('#openFix').innerHTML=ofs.length
     ? ofs.slice(0,6).map(f=>`<div class="stat"><span style="min-width:0;overflow:hidden;
@@ -1062,18 +1218,37 @@ function statusTag(s){
   return 't-warn';
 }
 function drawTrace(pct){
-  const W=600,H=96,mid=H/2,beats=20,bw=W/beats,on=Math.round(pct/100*beats);
+  const W=600,H=64,mid=H/2,beats=22,bw=W/beats,on=Math.round(pct/100*beats);
   let done='M0,'+mid, todo='';
   for(let i=0;i<on;i++){
     const x=i*bw;
-    done+=` L${(x+bw*.30).toFixed(1)},${mid} L${(x+bw*.38).toFixed(1)},${mid-7}`
-        + ` L${(x+bw*.46).toFixed(1)},${mid+9} L${(x+bw*.52).toFixed(1)},${mid-32}`
-        + ` L${(x+bw*.60).toFixed(1)},${mid+17} L${(x+bw*.68).toFixed(1)},${mid}`
+    done+=` L${(x+bw*.30).toFixed(1)},${mid} L${(x+bw*.38).toFixed(1)},${mid-5}`
+        + ` L${(x+bw*.46).toFixed(1)},${mid+6} L${(x+bw*.52).toFixed(1)},${mid-22}`
+        + ` L${(x+bw*.60).toFixed(1)},${mid+12} L${(x+bw*.68).toFixed(1)},${mid}`
         + ` L${(x+bw).toFixed(1)},${mid}`;
   }
   if(on<beats) todo=`M${(on*bw).toFixed(1)},${mid} L${W},${mid}`;
-  $('#trace').innerHTML=`<path class="grid" d="M0,${mid} L${W},${mid}"/>
-    <path class="done" d="${done}"/>`+(todo?`<path class="todo" d="${todo}"/>`:'');
+  $('#trace').innerHTML=`<path class="done" d="${done}"/>`+
+    (todo?`<path class="todo" d="${todo}"/>`:'');
+  movePulse(on/beats);
+}
+
+/* จุดเรืองแสงวิ่งไปตามความคืบหน้า */
+let pulseTimer=null;
+function movePulse(frac){
+  const dot=$('#pulse'), sv=$('#trace');
+  if(!dot||!sv) return;
+  clearInterval(pulseTimer);
+  if(frac<=0){ dot.style.display='none'; return; }
+  const box=sv.getBoundingClientRect(), host=sv.parentElement.getBoundingClientRect();
+  const top=box.top-host.top+box.height/2-4;
+  dot.style.display='block'; dot.style.top=top+'px';
+  let t=0;
+  pulseTimer=setInterval(()=>{
+    t=(t+0.012)%1;
+    dot.style.left=(box.left-host.left+box.width*frac*t)+'px';
+    dot.style.opacity=(0.25+0.75*Math.sin(t*Math.PI)).toFixed(2);
+  },40);
 }
 
 /* ═════════ ทะเบียน ═════════ */
@@ -1152,7 +1327,10 @@ function openItem(k){
         <dt>สถานะ</dt><dd><span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></dd>
         <dt>ใบคุม</dt><dd>${doc?`<a href="${doc}" target="_blank" rel="noopener">เปิดใบคุม</a>`:'ไม่มีไฟล์'}</dd>
         <dt>ตรวจเดือนนี้</dt><dd>${chkNow
-          ?`<span class="tag t-ok">${esc(chkNow.result)}</span> โดย ${esc(chkNow.by||'—')}`
+          ?`<span class="tag t-ok">${esc(chkNow.result)}</span> โดย ${esc(chkNow.by||'—')}`+
+           (chkNow.how?`<br><span style="color:var(--dim);font-size:14px">${esc(chkNow.how)}${
+             chkNow.geo&&chkNow.geo!=='ไม่ได้ระบุตำแหน่ง'
+               ? ' · '+esc(chkNow.geo)+(chkNow.dist?' ('+esc(chkNow.dist)+' ม.)':'') : ''}</span>`:'')
           :`<span class="tag t-bad">ยังไม่ได้ตรวจ</span>`}</dd>
         ${i.note?`<dt>หมายเหตุ</dt><dd>${esc(i.note)}</dd>`:''}
       </dl>
@@ -1183,6 +1361,22 @@ function staffOptions(cur,grp){
   if(cur && list.indexOf(cur)===-1) list.unshift(cur);
   return `<option value="">— เลือกรายชื่อ —</option>`+
     list.map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
+}
+/* ช่องรหัสยืนยัน ใช้กับทุกการแก้ไข/ลบ/บันทึก ยกเว้นการตรวจเช็คประจำเดือน */
+function pinField(){
+  return `<div class="field" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+    <label>รหัสยืนยันการแก้ไข</label>
+    <input class="inp" id="pinIn" type="password" inputmode="numeric" maxlength="8"
+           autocomplete="off" value="${esc(S.pin||'')}" placeholder="กรอกรหัส 3 หลัก"
+           style="max-width:190px;letter-spacing:4px;font-size:18px">
+    <div class="note" style="margin-top:6px">จำเป็นสำหรับการแก้ไขข้อมูล อัปโหลดไฟล์
+      และบันทึกงานซ่อม การตรวจเช็คประจำเดือนไม่ต้องใช้รหัส</div></div>`;
+}
+function grabPin(){
+  const el=$('#pinIn');
+  if(el) S.pin=el.value.trim();
+  if(!S.pin){ toast('กรุณากรอกรหัสยืนยันการแก้ไข','bad'); return false; }
+  return true;
 }
 function ownerList(){
   const o={}; S.items.forEach(i=>{ if(i.owner) o[i.owner]=1; });
@@ -1254,6 +1448,8 @@ function openEdit(k){
       <div class="field"><label>หมายเหตุ</label>
         <textarea id="edNote">${esc(i.note||'')}</textarea></div>
 
+      ${pinField()}
+
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitEdit('${esc(k)}')">บันทึกข้อมูล</button>
 
@@ -1287,6 +1483,7 @@ async function submitEdit(k){
   const i=findItem(k); if(!i) return;
   const owner=$('#edOwner').value.trim();
   if(!owner) return toast('กรุณาเลือกผู้รับผิดชอบ','bad');
+  if(!grabPin()) return;
   try{
     const price=parseFloat(String($('#edPrice').value).replace(/[^\d.]/g,''))||0;
     await api('updateItem',{cat:i.cat,row:i.row,owner,price,
@@ -1301,6 +1498,7 @@ async function submitEdit(k){
 async function doUpload(k,kind,input){
   const i=findItem(k), f=input.files&&input.files[0];
   if(!i||!f) return;
+  if(!grabPin()){ input.value=''; return; }
   const bar=$(kind==='doc'?'#upDocBar':'#upImgBar');
   bar.classList.add('on');
   try{
@@ -1384,6 +1582,7 @@ function openBulkOwner(){
           <div class="mid"><b>${esc(i.name)}</b><span>${esc(i.code)} · เดิม ${esc(i.owner||'—')}</span></div>
         </div>`).join('')}
         ${list.length>40?`<div class="note">…และอีก ${list.length-40} รายการ</div>`:''}</div>
+      ${pinField()}
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitBulkOwner()">เปลี่ยนผู้รับผิดชอบทั้ง ${list.length} รายการ</button>
     </div>`;
@@ -1392,6 +1591,7 @@ function openBulkOwner(){
 async function submitBulkOwner(){
   const owner=$('#bkOwner').value.trim();
   if(!owner) return toast('กรุณาเลือกชื่อผู้รับผิดชอบคนใหม่','bad');
+  if(!grabPin()) return;
   const list=matchList();
   if(!list.length) return toast('ไม่มีรายการที่จะเปลี่ยน','bad');
   try{
@@ -1605,11 +1805,28 @@ function buildOwnerReport(){
   return { owner:ow, count:n, overflow:overflow };
 }
 
+/* ═════════ ตรวจสอบตำแหน่งด้วย GPS ═════════ */
+function getPos(timeout){
+  return new Promise(res=>{
+    if(!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:Math.round(p.coords.accuracy||0)}),
+      ()=>res(null),
+      {enableHighAccuracy:true,timeout:timeout||8000,maximumAge:30000});
+  });
+}
+function distM(a,b,c,d){
+  const R=6371000,r=Math.PI/180;
+  const dx=(c-a)*r, dy=(d-b)*r;
+  const h=Math.sin(dx/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dy/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+}
+
 /* ═════════ ฟอร์มตรวจ ═════════ */
-let ckState={k:'',result:'ปกติ'};
-function openCheck(k){
+let ckState={k:'',result:'ปกติ',how:'เลือกจากรายการ'};
+function openCheck(k,how){
   const i=findItem(k); if(!i) return toast('ไม่พบครุภัณฑ์','bad');
-  ckState={k,result:'ปกติ'};
+  ckState={k,result:'ปกติ',how:how||'เลือกจากรายการ'};
   const chkNow=chk(checkMap(),i);
   $('#sheet').innerHTML=`
     <div class="hd"><h4>ตรวจครุภัณฑ์</h4><button class="x" onclick="closeSheet()">✕</button></div>
@@ -1628,7 +1845,10 @@ function openCheck(k){
         <textarea id="ckNote" placeholder="ระบุสิ่งที่พบ เช่น สายไฟชำรุด แบตเตอรี่เสื่อม"></textarea></div>
       <div class="field"><label>ผู้ตรวจ</label>
         <select class="inp" id="ckBy">${staffOptions($('#inspector').value||S.by)}</select></div>
-      <button class="btn go" style="width:100%;justify-content:center;padding:15px"
+      <div id="geoBox" class="note" style="margin-bottom:14px">
+        ${S.ward&&S.ward.lat?'ระบบจะบันทึกตำแหน่งขณะตรวจไว้เป็นหลักฐานประกอบ'
+          :'ยังไม่ได้ตั้งพิกัดหน่วยงาน — ตั้งได้ที่หน้าตั้งค่า'}</div>
+      <button class="btn go" id="ckSave" style="width:100%;justify-content:center;padding:15px"
         onclick="submitCheck()">บันทึกผลการตรวจ</button>
     </div>`;
   $$('#ckSeg button').forEach(b=>b.onclick=()=>{
@@ -1643,15 +1863,40 @@ async function submitCheck(){
   if(!by) return toast('กรุณาเลือกชื่อผู้ตรวจ','bad');
   S.by=by; store.set('kp.by',by);
   $('#inspector').innerHTML=staffOptions(by);
+
+  const btn=$('#ckSave'), box=$('#geoBox');
+  if(btn){ btn.disabled=true; btn.style.opacity=.6; btn.textContent='กำลังอ่านตำแหน่ง…'; }
+  if(box) box.textContent='กำลังอ่านตำแหน่งจาก GPS…';
+  const pos=await getPos(8000);
+  if(box){
+    if(!pos) box.innerHTML='<span style="color:var(--warn)">อ่านตำแหน่งไม่ได้</span>'+
+      ' — ระบบจะบันทึกโดยไม่มีพิกัด';
+    else if(S.ward&&S.ward.lat){
+      const d=Math.round(distM(pos.lat,pos.lng,S.ward.lat,S.ward.lng));
+      const ok=d<=(S.ward.radius||150)+pos.acc;
+      box.innerHTML=`<span style="color:var(--${ok?'ok':'bad'})">`+
+        (ok?'อยู่ในพื้นที่หน่วยงาน':'อยู่นอกพื้นที่หน่วยงาน')+
+        `</span> · ห่างจากจุดอ้างอิง ${d} ม. (ความแม่นยำ ±${pos.acc} ม.)`;
+    } else box.textContent=`ได้พิกัดแล้ว (ความแม่นยำ ±${pos.acc} ม.)`;
+  }
+  if(btn){ btn.textContent='บันทึกผลการตรวจ'; }
+
   const payload=[{cat:i.cat,row:i.row,code:i.code,ref:i.ref,name:i.name,
     result:ckState.result,note:$('#ckNote').value.trim(),loc:$('#ckLoc').value.trim()}];
   try{
-    const d=await api('saveCheck',{items:JSON.stringify(payload),month:S.month,by,how:'สแกน QR'});
+    const d=await api('saveCheck',{items:JSON.stringify(payload),month:S.month,by,
+      how:ckState.how||'สแกน QR',
+      lat:pos?pos.lat:'', lng:pos?pos.lng:'', acc:pos?pos.acc:''});
     S.checks=d.checks||S.checks;
     if(ckState.result!=='ปกติ') i.status=ckState.result==='ถูกยืม'?'ถูกยืม':ckState.result;
     if($('#ckLoc').value.trim()) i.loc=$('#ckLoc').value.trim();
-    closeSheet(); renderAll(); toast('บันทึกผลการตรวจ '+i.code+' แล้ว','good');
-  }catch(e){ toast(e.message,'bad'); }
+    closeSheet(); renderAll();
+    toast('บันทึกผลการตรวจ '+i.code+' แล้ว'+
+      (d.verdict&&d.verdict!=='ไม่ได้ระบุตำแหน่ง'?' · '+d.verdict:''),'good');
+  }catch(e){
+    toast(e.message,'bad');
+    if(btn){ btn.disabled=false; btn.style.opacity=1; }
+  }
 }
 
 /* ═════════ หน้าตรวจ ═════════ */
@@ -1717,7 +1962,7 @@ function findByCode(code){
   const n=s=>String(s||'').replace(/[\s\-]/g,'').toLowerCase();
   const hit=S.items.find(i=>n(i.code)===n(code)||n(i.ref)===n(code));
   if(!hit) return toast('ไม่พบเลขครุภัณฑ์ '+code,'bad');
-  openCheck(key(hit));
+  openCheck(key(hit), window._fromScan?'สแกน QR':'พิมพ์เลขครุภัณฑ์');
 }
 
 /* ═════════ สแกน ═════════ */
@@ -1733,7 +1978,7 @@ function startScan(){
   if(typeof Html5Qrcode==='undefined') return toast('โหลดตัวสแกนไม่สำเร็จ','bad');
   scanner=new Html5Qrcode('reader');
   scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},
-    txt=>{stopScan();handleScan(txt);},()=>{})
+    txt=>{stopScan(); window._fromScan=true; handleScan(txt); window._fromScan=false;},()=>{})
     .catch(e=>toast('เปิดกล้องไม่ได้: '+e,'bad'));
 }
 function stopScan(){ if(scanner){try{scanner.stop().then(()=>scanner.clear());}catch(e){} scanner=null;} }
@@ -1749,7 +1994,7 @@ function openByRef(k){
   const [cat,row]=String(k).split('.');
   const hit=S.items.find(i=>i.cat===cat&&String(i.row)===row);
   if(!hit) return toast('ไม่พบครุภัณฑ์ตามรหัสในสติ๊กเกอร์','bad');
-  openCheck(key(hit));
+  openCheck(key(hit),'สแกน QR');
 }
 function handleDeepLink(){
   const p=new URLSearchParams(location.search), c=p.get('c'), k=p.get('k');
@@ -1794,6 +2039,7 @@ function openFixForm(k){
       <div class="field"><label>เลขที่ใบส่งซ่อม</label><input class="inp" id="fxDoc"></div>
       <div class="field"><label>ผู้แจ้ง</label>
         <select class="inp" id="fxBy">${staffOptions(S.by)}</select></div>
+      ${pinField()}
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitFix('${esc(k)}')">บันทึกการส่งซ่อม</button>
     </div>`;
@@ -1802,6 +2048,7 @@ function openFixForm(k){
 async function submitFix(k){
   const i=findItem(k); if(!i) return;
   if(!$('#fxIssue').value.trim()) return toast('กรุณาระบุอาการที่พบ','bad');
+  if(!grabPin()) return;
   try{
     const d=await api('saveFix',{cat:i.cat,row:i.row,code:i.code,name:i.name,
       sent:$('#fxDate').value,issue:$('#fxIssue').value.trim(),to:$('#fxTo').value.trim(),
@@ -1833,6 +2080,7 @@ function openFixDetail(row){
         <input class="inp" type="date" id="fxBack" value="${new Date().toISOString().slice(0,10)}"></div>
       <div class="field"><label>รายละเอียดการซ่อม</label><textarea id="fxRes"></textarea></div>
       <div class="field"><label>ค่าใช้จ่าย (บาท)</label><input class="inp" id="fxCost" inputmode="decimal"></div>
+      ${pinField()}
       <button class="btn go" style="width:100%;justify-content:center;padding:15px"
         onclick="closeFix(${row},'${esc(f.cat)}',${it?it.row:0})">ปิดงานซ่อม</button>`}
     </div>`;
@@ -1843,6 +2091,7 @@ function openFixDetail(row){
   $('#scrim').classList.add('on');
 }
 async function closeFix(row,cat,itemRow){
+  if(!grabPin()) return;
   try{
     const d=await api('closeFix',{row,cat,itemRow,
       state:window._fxState?window._fxState():'ซ่อมเสร็จ',
