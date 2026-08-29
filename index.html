@@ -394,8 +394,8 @@ select.inp{appearance:none;padding-right:38px;
     justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));
     border-right:0;border-top:1px solid var(--line);background:rgba(255,255,255,.97);
     backdrop-filter:blur(16px);z-index:70;box-shadow:0 -4px 20px rgba(76,44,124,.07)}
-  nav.rail button{width:auto;flex:1;padding:8px 2px;font-size:11px;border-radius:13px}
-  nav.rail button svg{width:21px;height:21px}
+  nav.rail button{width:auto;flex:1;padding:7px 1px;font-size:10px;border-radius:12px;gap:4px}
+  nav.rail button svg{width:19px;height:19px}
   h2.vt{font-size:23px} p.vs{font-size:14.5px;margin-bottom:18px}
         .vitals{gap:18px} .vitals b{font-size:23px}   .card{padding:18px}
   .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -526,6 +526,7 @@ select.inp{appearance:none;padding-right:38px;
       <div class="card"><h3>สัดส่วนสถานะครุภัณฑ์</h3><div class="donut" id="byStatus"></div></div>
       <div class="card"><h3>แยกตามประเภท</h3><div id="byCat"></div></div>
       <div class="card"><h3>ค้างตรวจมากที่สุด</h3><div class="rank" id="topOwner"></div></div>
+      <div class="card"><h3>ครุภัณฑ์ที่ถูกยืมอยู่</h3><div id="openLoan"></div></div>
       <div class="card"><h3>งานซ่อมที่ยังไม่ปิด</h3><div id="openFix"></div></div>
     </div>
   </section>
@@ -550,6 +551,7 @@ select.inp{appearance:none;padding-right:38px;
       <button class="chip" data-f="done">ตรวจแล้ว</button>
       <button class="chip" data-f="broken">ชำรุด/ไม่พบ</button>
       <button class="chip" data-f="fix">อยู่ระหว่างซ่อม</button>
+      <button class="chip" data-f="loan">ถูกยืมอยู่</button>
       <span style="flex:1"></span>
       <button class="chip" onclick="openOwnerReport()"
         style="border-color:var(--plum);background:var(--lav-soft);color:var(--plum)">
@@ -593,6 +595,23 @@ select.inp{appearance:none;padding-right:38px;
       <button class="chip" data-ck="done">ตรวจแล้ว</button>
     </div>
     <div class="rows" id="checkList"></div>
+  </section>
+
+  <section class="view" id="v-loan">
+    <h2 class="vt">ยืม-คืนครุภัณฑ์</h2>
+    <p class="vs" id="loanSub">บันทึกการยืมออกและติดตามจนได้รับคืน</p>
+    <div class="tools">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="inp" id="lnQ" placeholder="ค้นชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือผู้ยืม"></label>
+      <button class="btn pri" onclick="openLoanPick()">บันทึกการยืมใหม่</button>
+    </div>
+    <div class="chips" style="margin-bottom:16px">
+      <button class="chip on" data-ln="out">กำลังยืม</button>
+      <button class="chip" data-ln="over">เลยกำหนดคืน</button>
+      <button class="chip" data-ln="all">ทั้งหมด</button>
+    </div>
+    <div class="rows" id="loanList"></div>
   </section>
 
   <section class="view" id="v-fix">
@@ -746,8 +765,8 @@ const S = {
   base: store.get('kp.base') || (location.origin + location.pathname),
   by: store.get('kp.by') || '',
   pin: '',
-  items:[], checks:[], fixes:[], staff:[], roles:{}, ward:null, month:'',
-  filter:'all', ckTab:'todo', fxTab:'open', shown:24, pickShown:36, ckShown:40,
+  items:[], checks:[], fixes:[], loans:[], staff:[], roles:{}, ward:null, month:'',
+  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
@@ -845,6 +864,7 @@ const NAV=[
   ['dash','ภาพรวม','M3 13h4l2-5 3 10 2-5h5'],
   ['stock','ทะเบียน','M4 6h16M4 12h16M4 18h10'],
   ['check','ตรวจเช็ค','M20 6 9 17l-5-5'],
+  ['loan','ยืม-คืน','M4 7h11l-3-3M20 17H9l3 3'],
   ['fix','ส่งซ่อม','M14.7 6.3a4 4 0 0 1-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2 2-2-2 2-2z'],
   ['sticker','สติ๊กเกอร์','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM19 19h2v2h-2z'],
   ['setup','ตั้งค่า','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.5-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.4a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4z']
@@ -972,6 +992,7 @@ async function reload(){
 }
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
+  S.loans=d.loans||S.loans;
   S.staff=d.staff||S.staff; S.roles=d.roles||S.roles; S.ward=d.ward||S.ward;
   fillSelect('#fStatus',d.statuses,'ทุกสถานะ');
   fillSelect('#fOwner',d.owners,'ทุกผู้รับผิดชอบ');
@@ -1018,7 +1039,7 @@ function openFixMap(){
   return m;
 }
 const ALIVE = it => it.status!=='แทงจำหน่าย';
-function renderAll(){ renderDash(); renderStock(); renderCheck(); renderFix(); }
+function renderAll(){ renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); }
 
 /* ---- สรุปจำนวนแยกประเภท ---- */
 function renderKpis(){
@@ -1119,7 +1140,6 @@ function renderDash(){
   const done=live.filter(i=>chk(cm,i)).length;
   const bad=live.filter(i=>{const c=chk(cm,i);
     return (c&&(c.result==='ชำรุด'||c.result==='ไม่พบ'))||i.status==='ชำรุด';}).length;
-  const borrowed=live.filter(i=>i.status==='ถูกยืม').length;
   const pct=live.length?Math.round(done/live.length*100):0;
 
   $('#dashSub').textContent=`รอบ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
@@ -1137,7 +1157,8 @@ function renderDash(){
   $('#vitals').innerHTML=[
     ['ตรวจแล้ว',done,'ok'],['ค้างตรวจ',live.length-done,'warn'],
     ['อยู่ระหว่างซ่อม',Object.keys(of).length,'fix'],
-    ['ถูกยืม',borrowed,'hold'],['ชำรุด/ไม่พบ',bad,'warn']
+    ['ถูกยืม',S.loans.filter(l=>l.state!=='คืนแล้ว').length,'hold'],
+    ['ชำรุด/ไม่พบ',bad,'warn']
   ].map(([l,v,c])=>`<div class="chip-hero ${c}"><b data-n>${v}</b><span>${l}</span></div>`).join('');
   $$('#vitals b[data-n]').forEach((el,k)=>{
     const v=+el.textContent; el.textContent='0'; setTimeout(()=>countUp(el,v,700),k*70);
@@ -1194,6 +1215,21 @@ function renderDash(){
   setTimeout(()=>$$('#topOwner .bw i').forEach((el,k)=>
     setTimeout(()=>el.style.width=el.dataset.w+'%',k*80)),60);
 
+  /* ครุภัณฑ์ที่ถูกยืมอยู่ */
+  const outLoans=S.loans.filter(l=>l.state!=='คืนแล้ว');
+  const overLoans=outLoans.filter(isOver);
+  $('#openLoan').innerHTML= outLoans.length
+    ? outLoans.slice(0,6).map(l=>`<div class="stat">
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${esc(l.name)}<br><span style="color:var(--dim2);font-size:13px">${esc(l.who)}</span></span>
+        <span class="tag ${isOver(l)?'t-bad':'t-warn'}">${
+          isOver(l)?'เกิน '+daysOver(l)+' วัน':esc(l.due||'—')}</span></div>`).join('')
+      + (outLoans.length>6?`<div class="note" style="margin-top:8px">และอีก ${
+          outLoans.length-6} รายการ</div>`:'')
+      + (overLoans.length?`<div class="note" style="margin-top:10px;color:var(--bad)">
+          เลยกำหนดคืน ${overLoans.length} รายการ</div>`:'')
+    : '<div class="note">ไม่มีครุภัณฑ์ที่ถูกยืมอยู่</div>';
+
   /* งานซ่อมค้าง */
   const ofs=Object.values(of);
   $('#openFix').innerHTML=ofs.length
@@ -1247,6 +1283,7 @@ function matchList(){
     if(S.filter==='done'&&!chk(cm,i)) return false;
     if(S.filter==='broken'&&!(i.status==='ชำรุด'||i.status==='ไม่พบ')) return false;
     if(S.filter==='fix'&&!of[ck(i)]) return false;
+    if(S.filter==='loan'&&!openLoanMap()[ck(i)]) return false;
     if(q&&![i.name,i.code,i.ref,i.owner,i.loc,i.note].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1311,6 +1348,7 @@ function openItem(k){
         <button class="btn go" style="flex:1;justify-content:center" onclick="openCheck('${esc(k)}')">ตรวจชิ้นนี้</button>
         <button class="btn pri" style="flex:1;justify-content:center" onclick="openEdit('${esc(k)}')">แก้ไขข้อมูล</button>
         <button class="btn" style="flex:1;justify-content:center" onclick="openFixForm('${esc(k)}')">แจ้งส่งซ่อม</button>
+        <button class="btn" style="flex:1;justify-content:center" onclick="openLoanForm('${esc(k)}')">บันทึกการยืม</button>
       </div>
       <h3 style="font-family:var(--f-d);font-size:15px;color:var(--plum);margin:0 0 14px">ประวัติส่งซ่อม</h3>
       ${fixes.length?`<div class="tl">${fixes.map(f=>`
@@ -1973,6 +2011,189 @@ function handleDeepLink(){
   const p=new URLSearchParams(location.search), c=p.get('c'), k=p.get('k');
   if(!c&&!k) return;
   go('check'); setTimeout(()=>k?openByRef(k):findByCode(c),400);
+}
+
+/* ═════════ ยืม-คืนครุภัณฑ์ ═════════ */
+const today10 = () => new Date().toISOString().slice(0,10);
+function openLoanMap(){
+  const m={};
+  S.loans.forEach(l=>{ if(l.state!=='คืนแล้ว') m[l.cat+'|'+nk(l.code)]=l; });
+  return m;
+}
+function isOver(l){ return l.state!=='คืนแล้ว' && l.due && l.due < today10(); }
+function daysOver(l){
+  return Math.floor((new Date(today10())-new Date(l.due))/86400000);
+}
+
+$$('[data-ln]').forEach(b=>b.onclick=()=>{
+  $$('[data-ln]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); S.lnTab=b.dataset.ln; renderLoan();
+});
+$('#lnQ').addEventListener('input',renderLoan);
+
+function renderLoan(){
+  const q=$('#lnQ').value.trim().toLowerCase();
+  const out=S.loans.filter(l=>l.state!=='คืนแล้ว');
+  const over=out.filter(isOver);
+  let list = S.lnTab==='over' ? over
+           : S.lnTab==='all'  ? S.loans.slice().reverse() : out;
+  if(q) list=list.filter(l=>[l.name,l.code,l.who,l.place].join(' ').toLowerCase().includes(q));
+
+  $('#loanSub').innerHTML=`กำลังยืมอยู่ <b style="color:var(--plum)">${out.length}</b> รายการ`+
+    (over.length?` · <b style="color:var(--bad)">เลยกำหนดคืน ${over.length} รายการ</b>`:'')+
+    ' · บันทึกการยืมออกและติดตามจนได้รับคืน';
+
+  $('#loanList').innerHTML = list.length ? list.slice(0,80).map(l=>{
+    const it=S.items.find(i=>i.cat===l.cat && nk(i.code)===nk(l.code));
+    const u=it?imgUrl(it.img):'';
+    const ov=isOver(l);
+    return `<button class="row" data-r="${l.row}">
+      ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
+        :`<div class="thumb"></div>`}
+      <div class="mid"><b>${esc(l.name)}</b>
+        <span>${esc(l.code)} · ผู้ยืม ${esc(l.who)}${l.place?' · '+esc(l.place):''}
+        ${l.due?' · กำหนดคืน '+esc(l.due):''}</span></div>
+      ${l.state==='คืนแล้ว'
+        ? `<span class="tag t-ok">คืนแล้ว</span>`
+        : ov ? `<span class="tag t-bad">เกิน ${daysOver(l)} วัน</span>`
+             : `<span class="tag t-warn">กำลังยืม</span>`}</button>`;
+  }).join('')
+   : `<div class="empty"><b>${S.lnTab==='over'?'ไม่มีรายการเลยกำหนดคืน':'ไม่มีรายการยืม'}</b>
+       กดปุ่มบันทึกการยืมใหม่เพื่อเริ่มบันทึก</div>`;
+  $$('#loanList .row').forEach(el=>el.onclick=()=>openLoanDetail(+el.dataset.r));
+}
+
+/* เลือกครุภัณฑ์ที่จะยืม */
+function openLoanPick(){
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>เลือกครุภัณฑ์ที่จะยืม</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="field"><label>ค้นหาครุภัณฑ์</label>
+        <input class="inp" id="lpQ" placeholder="พิมพ์ชื่อหรือเลขครุภัณฑ์" autofocus></div>
+      <div class="rows" id="lpList" style="max-height:52vh;overflow:auto"></div>
+    </div>`;
+  $('#lpQ').addEventListener('input',lpRender);
+  lpRender();
+  $('#scrim').classList.add('on');
+}
+function lpRender(){
+  const q=$('#lpQ').value.trim().toLowerCase();
+  const lm=openLoanMap();
+  const list=S.items.filter(i=>ALIVE(i) && !lm[ck(i)] &&
+    (!q||[i.name,i.code,i.owner].join(' ').toLowerCase().includes(q))).slice(0,40);
+  $('#lpList').innerHTML=list.length?list.map(i=>`
+    <button class="row" data-k="${esc(key(i))}">
+      <div class="mid"><b>${esc(i.name)}</b>
+        <span>${esc(i.code)} · ${esc(i.owner||'—')}</span></div>
+      <span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></button>`).join('')
+   :'<div class="note" style="padding:14px">ไม่พบครุภัณฑ์ที่ยืมได้ (รายการที่ถูกยืมอยู่จะไม่แสดง)</div>';
+  $$('#lpList .row').forEach(el=>el.onclick=()=>openLoanForm(el.dataset.k));
+}
+
+function openLoanForm(k){
+  const i=findItem(k); if(!i) return;
+  const d=new Date(); d.setDate(d.getDate()+7);
+  const due=d.toISOString().slice(0,10);
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>บันทึกการยืมครุภัณฑ์</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <dl class="kv"><dt>รายการ</dt><dd>${esc(i.name)}</dd>
+        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(i.code)}</dd>
+        <dt>ผู้รับผิดชอบ</dt><dd>${esc(i.owner||'—')}</dd></dl>
+      <div class="field"><label>ผู้ยืม</label>
+        <input class="inp" id="lnWho" placeholder="ชื่อ-สกุลผู้ยืม"></div>
+      <div class="field"><label>หน่วยงาน / สถานที่ที่นำไปใช้</label>
+        <input class="inp" id="lnPlace" placeholder="เช่น ห้องผ่าตัด, หอผู้ป่วยชั้น 9"></div>
+      <div class="field"><label>เบอร์ติดต่อ</label>
+        <input class="inp" id="lnTel" inputmode="tel" placeholder="เบอร์ภายในหรือมือถือ"></div>
+      <div class="seg" style="margin-bottom:16px">
+        <div class="field" style="flex:1;margin:0"><label>วันที่ยืม</label>
+          <input class="inp" type="date" id="lnOut" value="${today10()}"></div>
+        <div class="field" style="flex:1;margin:0"><label>กำหนดคืน</label>
+          <input class="inp" type="date" id="lnDue" value="${due}"></div>
+      </div>
+      <div class="field"><label>เหตุผลการยืม</label>
+        <textarea id="lnWhy" placeholder="เช่น ใช้กับผู้ป่วยที่ย้ายไปห้องผ่าตัด"></textarea></div>
+      <div class="field"><label>ผู้ให้ยืม</label>
+        <select class="inp" id="lnBy">${staffOptions(S.by)}</select></div>
+      ${pinField()}
+      <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
+        onclick="submitLoan('${esc(k)}')">บันทึกการยืม</button>
+    </div>`;
+  $('#scrim').classList.add('on');
+}
+async function submitLoan(k){
+  const i=findItem(k); if(!i) return;
+  const who=$('#lnWho').value.trim();
+  if(!who) return toast('กรุณาระบุชื่อผู้ยืม','bad');
+  if(!grabPin()) return;
+  try{
+    const d=await api('saveLoan',{cat:i.cat,row:i.row,code:i.code,name:i.name,who,
+      place:$('#lnPlace').value.trim(), tel:$('#lnTel').value.trim(),
+      out:$('#lnOut').value, due:$('#lnDue').value,
+      why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim()});
+    S.loans=d.loans||S.loans;
+    i.status='ถูกยืม';
+    if($('#lnPlace').value.trim()) i.loc=$('#lnPlace').value.trim();
+    closeSheet(); renderAll(); go('loan');
+    toast('บันทึกการยืม '+i.code+' แล้ว','good');
+  }catch(e){ toast(e.message,'bad'); }
+}
+
+function openLoanDetail(row){
+  const l=S.loans.find(x=>x.row===row); if(!l) return;
+  const it=S.items.find(i=>i.cat===l.cat && nk(i.code)===nk(l.code));
+  const closed=l.state==='คืนแล้ว';
+  const ov=isOver(l);
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>${esc(l.name)}</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <dl class="kv">
+        <dt>เลขครุภัณฑ์</dt><dd class="code">${esc(l.code)}</dd>
+        <dt>ผู้ยืม</dt><dd>${esc(l.who)}${l.tel?' · โทร '+esc(l.tel):''}</dd>
+        <dt>นำไปที่</dt><dd>${esc(l.place||'—')}</dd>
+        <dt>วันที่ยืม</dt><dd>${esc(l.out||'—')}</dd>
+        <dt>กำหนดคืน</dt><dd>${esc(l.due||'—')}
+          ${ov?`<span class="tag t-bad" style="margin-left:6px">เกิน ${daysOver(l)} วัน</span>`:''}</dd>
+        ${l.why?`<dt>เหตุผล</dt><dd>${esc(l.why)}</dd>`:''}
+        <dt>ผู้ให้ยืม</dt><dd>${esc(l.by||'—')}</dd>
+        <dt>สถานะ</dt><dd><span class="tag ${closed?'t-ok':ov?'t-bad':'t-warn'}">${esc(l.state)}</span></dd>
+        ${l.back?`<dt>วันที่คืนจริง</dt><dd>${esc(l.back)} · สภาพ ${esc(l.cond||'ปกติ')}</dd>`:''}
+        ${l.got?`<dt>ผู้รับคืน</dt><dd>${esc(l.got)}</dd>`:''}
+      </dl>
+      ${closed?'':`<div class="hr"></div>
+      <div class="field"><label>สภาพเมื่อคืน</label>
+        <div class="seg" id="lnSeg">
+          <button data-v="ปกติ" class="on">ปกติ</button>
+          <button data-v="ชำรุด">ชำรุด</button></div></div>
+      <div class="field"><label>วันที่คืนจริง</label>
+        <input class="inp" type="date" id="lnBack" value="${today10()}"></div>
+      <div class="field"><label>ผู้รับคืน</label>
+        <select class="inp" id="lnGot">${staffOptions(S.by)}</select></div>
+      <div class="field"><label>หมายเหตุ</label><textarea id="lnNote"></textarea></div>
+      ${pinField()}
+      <button class="btn go" style="width:100%;justify-content:center;padding:15px"
+        onclick="submitReturn(${row},'${esc(l.cat)}',${it?it.row:0})">บันทึกการรับคืน</button>`}
+    </div>`;
+  let cond='ปกติ';
+  $$('#lnSeg button').forEach(b=>b.onclick=()=>{
+    $$('#lnSeg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); cond=b.dataset.v; });
+  window._lnCond=()=>cond;
+  $('#scrim').classList.add('on');
+}
+async function submitReturn(row,cat,itemRow){
+  if(!grabPin()) return;
+  try{
+    const d=await api('closeLoan',{row,cat,itemRow,
+      back:$('#lnBack').value, cond:window._lnCond?window._lnCond():'ปกติ',
+      got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim()});
+    S.loans=d.loans||S.loans;
+    closeSheet(); await reload(); toast('บันทึกการรับคืนแล้ว','good');
+  }catch(e){ toast(e.message,'bad'); }
 }
 
 /* ═════════ ส่งซ่อม ═════════ */
