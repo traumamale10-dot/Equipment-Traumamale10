@@ -440,6 +440,8 @@ select.inp{appearance:none;padding-right:38px;
     backdrop-filter:blur(16px);z-index:70;box-shadow:0 -4px 20px rgba(76,44,124,.07)}
   nav.rail button{width:auto;flex:1;padding:7px 1px;font-size:10px;border-radius:12px;gap:4px}
   nav.rail button svg{width:19px;height:19px}
+  nav.rail .badge{top:1px;right:calc(50% - 20px);min-width:17px;height:17px;line-height:17px;
+    font-size:10px}
   h2.vt{font-size:23px} p.vs{font-size:14.5px;margin-bottom:18px}
         .vitals{gap:18px} .vitals b{font-size:23px}   .card{padding:18px}
   .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -449,6 +451,39 @@ select.inp{appearance:none;padding-right:38px;
   .btn{padding:11px 17px;font-size:15px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ══════════ แถบเตือนบนหน้าภาพรวม ══════════ */
+#alerts{display:grid;gap:10px;margin-bottom:16px}
+#alerts:empty{display:none}
+.alert{display:flex;align-items:center;gap:13px;padding:13px 16px;border-radius:16px;
+  border:1.5px solid;background:var(--surface);box-shadow:var(--sh);text-align:left;
+  width:100%;transition:.16s;cursor:pointer}
+.alert:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
+.alert .ic{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
+  font-family:var(--f-d);font-weight:700;font-size:17px}
+.alert .tx{flex:1;min-width:0}
+.alert .tx b{display:block;font-family:var(--f-d);font-weight:600;font-size:16px;line-height:1.35}
+.alert .tx span{font-size:14px;color:var(--dim)}
+.alert .go{color:var(--dim2);font-size:22px;line-height:1;flex:none}
+.alert.red{border-color:#F3CBD6;background:linear-gradient(90deg,#FEF4F7,var(--surface) 60%)}
+.alert.red .ic{background:var(--bad-bg);color:var(--bad)}
+.alert.red .tx b{color:#8E2A44}
+.alert.amber{border-color:#F5E0B8;background:linear-gradient(90deg,#FFFAF0,var(--surface) 60%)}
+.alert.amber .ic{background:var(--warn-bg);color:var(--warn)}
+.alert.amber .tx b{color:#8A5C10}
+.alert.info{border-color:var(--line2);background:linear-gradient(90deg,#F8F4FF,var(--surface) 60%)}
+.alert.info .ic{background:var(--lav-soft);color:var(--plum)}
+.alert.info .tx b{color:var(--plum)}
+.alert.ok{border-color:#BFE9D8;background:linear-gradient(90deg,#F1FBF7,var(--surface) 60%);
+  cursor:default}
+.alert.ok .ic{background:var(--ok-bg);color:var(--ok)}
+.alert.ok .tx b{color:var(--ok)}
+
+nav.rail button{position:relative}
+nav.rail .badge{position:absolute;top:4px;right:8px;min-width:19px;height:19px;padding:0 5px;
+  border-radius:99px;background:var(--bad);color:#fff;font-family:var(--f-d);font-weight:600;
+  font-size:11px;line-height:19px;text-align:center;box-shadow:0 2px 6px rgba(196,64,95,.4)}
+nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 /* ══════════ ใบสรุปรายการของผู้รับผิดชอบ ══════════ */
 .report{width:210mm;min-height:297mm;padding:11mm 11mm 9mm;background:#fff;color:#111;
@@ -532,6 +567,8 @@ select.inp{appearance:none;padding-right:38px;
       <div style="margin-top:12px;display:flex;gap:9px;flex-wrap:wrap">
         <button class="btn" onclick="reload()">ลองใหม่</button>
         <button class="btn" onclick="go('setup')">ไปหน้าตั้งค่า</button></div></div>
+    <div id="alerts"></div>
+
     <div class="hero">
       <div class="row">
         <div class="gauge">
@@ -1245,6 +1282,106 @@ function openFixMap(){
 const ALIVE = it => it.status!=='แทงจำหน่าย';
 function renderAll(){ renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); }
 
+/* ───── แถบเตือนบนหน้าภาพรวม ─────
+   แสดงเฉพาะเรื่องที่ต้องลงมือทำ เรียงตามความเร่งด่วน แตะแล้วไปยังรายการนั้นทันที */
+function renderAlerts(){
+  const box=$('#alerts'); if(!box) return;
+  const cm=checkMap(), of=openFixMap();
+  const live=S.items.filter(ALIVE);
+  const A=[];
+
+  const now=new Date();
+  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const leftDays=lastDay-now.getDate();
+
+  /* 1. ของยืมที่ต้องติดตาม */
+  const outL=S.loans.filter(l=>l.state!=='คืนแล้ว');
+  const overL=outL.filter(l=>isOver(l)||needFollow(l));
+  if(overL.length) A.push({lv:'red',ic:'!',
+    t:'ครุภัณฑ์เลยกำหนดคืน '+overL.length+' รายการ',
+    s:overL.slice(0,3).map(l=>l.name+' ('+l.who+')').join(' · ')+
+      (overL.length>3?' และอีก '+(overL.length-3)+' รายการ':''),
+    go:()=>{S.lnTab='over';$$('[data-ln]').forEach(x=>
+      x.classList.toggle('on',x.dataset.ln==='over'));renderLoan();go('loan');}});
+
+  /* 2. ชำรุดหรือไม่พบ แต่ยังไม่ได้แจ้งซ่อม */
+  const brokenNoFix=live.filter(i=>
+    (i.status==='ชำรุด'||i.status==='ไม่พบ') && !of[ck(i)]);
+  if(brokenNoFix.length) A.push({lv:'red',ic:'!',
+    t:'ชำรุด/ไม่พบ แต่ยังไม่ได้แจ้งซ่อม '+brokenNoFix.length+' รายการ',
+    s:brokenNoFix.slice(0,3).map(i=>i.name).join(' · ')+
+      (brokenNoFix.length>3?' และอีก '+(brokenNoFix.length-3)+' รายการ':''),
+    go:()=>goFilter({f:'broken'})});
+
+  /* 3. รอซ่อมเวลาราชการ */
+  const waitFix=Object.values(of).filter(f=>f.state==='รอซ่อมเวลาราชการ');
+  if(waitFix.length) A.push({lv:'amber',ic:'⏱',
+    t:'รอส่งซ่อมในเวลาราชการ '+waitFix.length+' รายการ',
+    s:waitFix.slice(0,3).map(f=>f.name).join(' · ')+
+      (waitFix.length>3?' และอีก '+(waitFix.length-3)+' รายการ':''),
+    go:()=>{S.fxTab='wait';$$('[data-fx]').forEach(x=>
+      x.classList.toggle('on',x.dataset.fx==='wait'));renderFix();go('fix');}});
+
+  /* 4. งานซ่อมค้างนาน */
+  const oldFix=Object.values(of).filter(f=>{
+    if(!f.sent) return false;
+    return (new Date()-new Date(f.sent))/86400000 > 30;
+  });
+  if(oldFix.length) A.push({lv:'amber',ic:'⏱',
+    t:'งานซ่อมค้างเกิน 30 วัน '+oldFix.length+' รายการ',
+    s:'ควรติดตามกับหน่วยงานที่รับซ่อม',
+    go:()=>{S.fxTab='open';$$('[data-fx]').forEach(x=>
+      x.classList.toggle('on',x.dataset.fx==='open'));renderFix();go('fix');}});
+
+  /* 5. ค้างตรวจ เตือนแรงขึ้นเมื่อใกล้สิ้นเดือน */
+  const todo=live.filter(i=>!chk(cm,i)).length;
+  if(todo && S.month===curMonth){
+    const urgent=leftDays<=10;
+    A.push({lv:urgent?'red':'info',ic:String(todo),
+      t:'ยังไม่ได้ตรวจ '+todo+' รายการ',
+      s:urgent?'เหลืออีก '+leftDays+' วันจะสิ้นรอบเดือนนี้'
+              :'รอบ '+thMonth(S.month)+' เหลือเวลาอีก '+leftDays+' วัน',
+      go:()=>{S.ckTab='todo';$$('[data-ck]').forEach(x=>
+        x.classList.toggle('on',x.dataset.ck==='todo'));renderCheck();go('check');}});
+  }
+
+  /* 6. ยังไม่มีรูปหรือยังไม่ลงราคา */
+  const noImg=live.filter(i=>!i.img).length;
+  if(noImg) A.push({lv:'info',ic:'+',
+    t:'ยังไม่มีรูปครุภัณฑ์ '+noImg+' รายการ',
+    s:'เพิ่มรูปได้จากหน้าแก้ไขข้อมูล ช่วยยืนยันตัวครุภัณฑ์ตอนตรวจและตอนยืม',
+    go:()=>goFilter({})});
+
+  if(!A.length){
+    box.innerHTML=`<div class="alert ok"><div class="ic">✓</div>
+      <div class="tx"><b>ไม่มีเรื่องค้างดำเนินการ</b>
+      <span>ตรวจครบ ไม่มีของค้างคืน และไม่มีงานซ่อมที่ต้องติดตาม</span></div></div>`;
+    return;
+  }
+  const order={red:0,amber:1,info:2};
+  A.sort((a,b)=>order[a.lv]-order[b.lv]);
+  box.innerHTML=A.map((a,i)=>`<button class="alert ${a.lv}" data-i="${i}">
+    <div class="ic">${esc(a.ic)}</div>
+    <div class="tx"><b>${esc(a.t)}</b><span>${esc(a.s)}</span></div>
+    <div class="go">›</div></button>`).join('');
+  $$('#alerts .alert').forEach(el=>{
+    const a=A[+el.dataset.i]; if(a&&a.go) el.onclick=a.go;
+  });
+
+  /* ตัวเลขค้างบนเมนูด้านข้าง */
+  const badge=(v,n)=>{
+    const b=document.querySelector(`nav.rail button[data-v="${v}"]`);
+    if(!b) return;
+    const old=b.querySelector('.badge'); if(old) old.remove();
+    if(n>0) b.insertAdjacentHTML('beforeend',
+      `<span class="badge">${n>99?'99+':n}</span>`);
+  };
+  badge('check', S.month===curMonth?todo:0);
+  badge('loan',  overL.length);
+  badge('fix',   waitFix.length+oldFix.length);
+}
+
 /* ไปหน้าทะเบียนพร้อมตั้งตัวกรองให้เสร็จ ใช้จากการ์ดบนหน้าภาพรวม */
 function goFilter(opt){
   opt=opt||{};
@@ -1352,7 +1489,7 @@ function countUp(el, to, ms){
 }
 
 function renderDash(){
-  renderKpis(); renderLookup();
+  renderKpis(); renderLookup(); renderAlerts();
   const cm=checkMap(), of=openFixMap(), live=S.items.filter(ALIVE);
   const done=live.filter(i=>chk(cm,i)).length;
   const bad=live.filter(i=>{const c=chk(cm,i);
