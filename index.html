@@ -606,6 +606,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <div class="bento">
       <div class="card"><h3>สัดส่วนสถานะครุภัณฑ์</h3><div class="donut" id="byStatus"></div></div>
       <div class="card"><h3>แยกตามประเภท</h3><div id="byCat"></div></div>
+      <div class="card"><h3>อายุการใช้งานครุภัณฑ์</h3><div id="byAge"></div></div>
       <div class="card"><h3>ค้างตรวจมากที่สุด</h3><div class="rank" id="topOwner"></div></div>
       <div class="card"><h3>ครุภัณฑ์ที่ถูกยืมอยู่</h3><div id="openLoan"></div></div>
       <div class="card"><h3>งานซ่อมที่ยังไม่ปิด</h3><div id="openFix"></div></div>
@@ -634,6 +635,8 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <button class="chip" data-f="fix">อยู่ระหว่างซ่อม</button>
       <button class="chip" data-f="loan">ถูกยืมอยู่</button>
       <button class="chip" data-f="wait">รอซ่อมเวลาราชการ</button>
+      <button class="chip" data-f="old">ใช้งานเกิน 10 ปี</button>
+      <button class="chip" data-f="norecv">ยังไม่ลงวันรับมอบ</button>
       <span style="flex:1"></span>
       <button class="chip" onclick="openOwnerReport()"
         style="border-color:var(--plum);background:var(--lav-soft);color:var(--plum)">
@@ -942,6 +945,21 @@ const thMonth = mk => { const [y,m]=mk.split('-'); return TH_MONTH[+m-1] + ' ' +
 const imgUrl = (id,w) => id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w'+(w||320) : '';
 const baht = v => (Number(v)||0).toLocaleString('th-TH',
   {minimumFractionDigits:2,maximumFractionDigits:2});
+/* อายุการใช้งานนับจากวันรับมอบ รองรับวันที่แบบ dd/MM/พ.ศ. */
+function ageOf(recv){
+  const m=String(recv||'').match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  if(!m) return null;
+  const y=+m[3]-543, d=new Date(y,+m[2]-1,+m[1]);
+  if(isNaN(d)) return null;
+  const yr=(new Date()-d)/(365.25*86400000);
+  return yr<0?null:yr;
+}
+const ageText = recv => {
+  const a=ageOf(recv);
+  if(a===null) return '';
+  const y=Math.floor(a), mo=Math.round((a-y)*12);
+  return y>0 ? y+' ปี'+(mo?' '+mo+' เดือน':'') : mo+' เดือน';
+};
 const bahtShort = v => {
   const n=Number(v)||0;
   if(n>=1e6) return (n/1e6).toFixed(2).replace(/\.00$/,'')+' ล้าน';
@@ -1569,6 +1587,25 @@ function renderDash(){
     el.style.width=(all.length?Math.round(dn/all.length*100):0)+'%';
   }),60);
 
+  /* ช่วงอายุการใช้งาน ใช้ประกอบการวางแผนจัดซื้อทดแทน */
+  const bands=[['ไม่เกิน 5 ปี',0,5,'var(--ok)'],['5 ถึง 10 ปี',5,10,'var(--plum)'],
+               ['10 ถึง 15 ปี',10,15,'var(--warn)'],['เกิน 15 ปี',15,999,'var(--bad)']];
+  const aged=live.map(i=>ageOf(i.recv)).filter(a=>a!==null);
+  const noRecv=live.length-aged.length;
+  $('#byAge').innerHTML = aged.length
+    ? bands.map(([lb,lo,hi,col])=>{
+        const n=aged.filter(a=>a>=lo&&a<hi).length;
+        const p=Math.round(n/aged.length*100);
+        return `<div style="margin-bottom:11px">
+          <div class="stat" style="border:0;padding:2px 0">
+            <span>${lb}</span><b style="color:${col}">${n} <span
+              style="color:var(--dim2);font-size:14px">${p}%</span></b></div>
+          <div class="meter"><i style="width:${p}%;background:${col}"></i></div></div>`;
+      }).join('')
+      + (noRecv?`<div class="note" style="margin-top:4px">ยังไม่ได้ลงวันรับมอบ ${noRecv} รายการ</div>`:'')
+    : '<div class="note">ยังไม่มีข้อมูลวันรับมอบ ดึงได้จากเมนูในชีต</div>';
+  $$('#byAge .stat').forEach((el,k)=>el.style.cursor='default');
+
   /* อันดับผู้รับผิดชอบที่ค้างมากสุด */
   const owe={};
   S.items.filter(i=>ALIVE(i)&&!chk(cm,i)).forEach(i=>{
@@ -1668,6 +1705,8 @@ function matchList(){
     if(S.filter==='broken'&&!(i.status==='ชำรุด'||i.status==='ไม่พบ')) return false;
     if(S.filter==='fix'&&!of[ck(i)]) return false;
     if(S.filter==='loan'&&!openLoanMap()[ck(i)]) return false;
+    if(S.filter==='old'){ const a=ageOf(i.recv); if(a===null||a<10) return false; }
+    if(S.filter==='norecv' && i.recv) return false;
     if(S.filter==='wait'){
       const f=of[ck(i)];
       if(!f||f.state!=='รอซ่อมเวลาราชการ') return false;
@@ -1697,7 +1736,9 @@ function card(i,chk){
     <div class="bd"><div class="nm">${esc(i.name)}</div>
       <div class="cd">${esc(i.code)}</div>
       <div class="ow">${esc(i.owner||'—')}${i.loc?' · '+esc(i.loc):''}</div>
-      ${i.price?`<div class="cd" style="color:var(--dim)">${baht(i.price)} บาท</div>`:''}
+      ${i.price?`<div class="cd" style="color:var(--dim)">${baht(i.price)} บาท${
+        ageText(i.recv)?' · '+ageText(i.recv):''}</div>`
+        :(ageText(i.recv)?`<div class="cd" style="color:var(--dim)">ใช้งาน ${ageText(i.recv)}</div>`:'')}
       </div></button>`;
 }
 
@@ -1721,6 +1762,10 @@ function openItem(k){
         <dt>ผู้รับผิดชอบ</dt><dd>${esc(i.owner||'—')}</dd>
         <dt>จุดวาง</dt><dd>${esc(i.loc||'—')}</dd>
         <dt>ราคา</dt><dd>${i.price?baht(i.price)+' บาท'
+          :'<span style="color:var(--dim2)">ยังไม่ได้บันทึก</span>'}</dd>
+        <dt>วันรับมอบ</dt><dd>${i.recv
+          ? esc(i.recv)+(ageText(i.recv)?` <span style="color:var(--dim)">· ใช้งานมาแล้ว ${
+              ageText(i.recv)}</span>`:'')
           :'<span style="color:var(--dim2)">ยังไม่ได้บันทึก</span>'}</dd>
         <dt>สถานะ</dt><dd><span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></dd>
         <dt>ใบคุม</dt><dd>${doc?`<a href="${doc}" target="_blank" rel="noopener">เปิดใบคุม</a>`:'ไม่มีไฟล์'}</dd>
@@ -1858,6 +1903,12 @@ function openEdit(k){
         <div id="ocrBox" class="note" style="margin-top:8px">${i.doc?''
           :'รายการนี้ยังไม่มีไฟล์ใบคุม อัปโหลดก่อนจึงจะให้ระบบอ่านราคาได้'}</div></div>
 
+      <div class="field"><label>วันรับมอบ (วว/ดด/ปปปป พ.ศ.)</label>
+        <input class="inp" id="edRecv" value="${esc(i.recv||'')}" placeholder="เช่น 27/09/2563">
+        <div class="note" style="margin-top:6px">${i.recv&&ageText(i.recv)
+          ? 'ใช้งานมาแล้ว '+ageText(i.recv)
+          : 'ดูได้จากใบคุมครุภัณฑ์ ใช้คำนวณอายุการใช้งาน'}</div></div>
+
       <div class="field"><label>หมายเหตุ</label>
         <textarea id="edNote">${esc(i.note||'')}</textarea></div>
 
@@ -1899,9 +1950,10 @@ async function submitEdit(k){
   if(!grabPin()) return;
   try{
     const price=parseFloat(String($('#edPrice').value).replace(/[^\d.]/g,''))||0;
-    await api('updateItem',{cat:i.cat,row:i.row,owner,price,
+    const recv=$('#edRecv').value.trim();
+    await api('updateItem',{cat:i.cat,row:i.row,owner,price,recv,
       status:$('#edStatus').value,loc:$('#edLoc').value.trim(),note:$('#edNote').value.trim()});
-    i.owner=owner; i.status=$('#edStatus').value; i.price=price;
+    i.owner=owner; i.status=$('#edStatus').value; i.price=price; i.recv=recv;
     i.loc=$('#edLoc').value.trim(); i.note=$('#edNote').value.trim();
     refreshOwnerLists(); renderAll(); closeSheet();
     toast('บันทึกข้อมูลแล้ว','good');
@@ -2218,13 +2270,13 @@ async function reportCanvases(ow, rows, showPrice, showCheck, alive){
   const cm2=cm;
   const heads=[['ลำดับ','c'],['ชื่อครุภัณฑ์','l'],['หมายเลขครุภัณฑ์','l'],
                ['จุดวาง','l'],['สถานะ','c']];
-  if(showPrice) heads.push(['ราคา (บาท)','r']);
+  if(showPrice) heads.push(['วันรับมอบ','c'],['ราคา (บาท)','r']);
   if(showCheck) heads.push(['ผลตรวจ','c']);
 
   const cellText=(it,k)=>{
     const c2=chk(cm2,it);
     const v=[String(k+1), it.name, it.code, it.loc||'—', it.status];
-    if(showPrice) v.push(it.price?baht(it.price):'—');
+    if(showPrice) v.push(it.recv||'—', it.price?baht(it.price):'—');
     if(showCheck) v.push(c2?c2.result:'—');
     return v;
   };
@@ -2432,7 +2484,8 @@ function buildOwnerReport(){
       <td>${esc(i.code)}</td>
       <td>${esc(i.loc||'—')}</td>
       <td class="c">${esc(i.status)}</td>
-      ${showPrice?`<td class="r">${i.price?baht(i.price):'—'}</td>`:''}
+      ${showPrice?`<td class="c">${esc(i.recv||'—')}</td>
+        <td class="r">${i.price?baht(i.price):'—'}</td>`:''}
       ${showCheck?`<td class="c">${c?esc(c.result):'—'}</td>`:''}
     </tr>`;
   }).join('');
