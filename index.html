@@ -824,6 +824,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <button class="btn" onclick="testConn()">ทดสอบการเชื่อมต่อ</button>
         <button class="btn" onclick="speedTest()">ตรวจความเร็วการโหลด</button>
         <button class="btn" onclick="rebuildIndex()">สร้างดัชนีรูปภาพใหม่</button>
+        <button class="btn warn" onclick="clearLocal()">ล้างข้อมูลในเครื่องนี้</button>
       </div>
       <div id="diag" class="note" style="margin-top:14px"></div>
       <div class="tools" style="margin-top:6px">
@@ -856,7 +857,10 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         ตัวที่บอกได้ดีกว่าคือคอลัมน์ วิธีตรวจ ซึ่งแยกว่าสแกน QR หรือกดเลือกจากรายการ</p>
 
       <div class="hr"></div>
-      <p class="note">รูปครุภัณฑ์ดึงจากโฟลเดอร์ Google Drive ที่ผูกไว้ ถ้ารูปไม่ขึ้น
+      <p class="note"><b>ล้างข้อมูลในเครื่องนี้</b> ใช้เมื่อเครื่องใดเครื่องหนึ่งแสดงข้อมูลไม่ครบ
+        หรือไม่ตรงกับเครื่องอื่น ระบบจะลบข้อมูลสำรองในเครื่องแล้วดึงใหม่ทั้งหมด
+        ไม่กระทบข้อมูลบนเซิร์ฟเวอร์<br><br>
+        รูปครุภัณฑ์ดึงจากโฟลเดอร์ Google Drive ที่ผูกไว้ ถ้ารูปไม่ขึ้น
         ให้เปิดสิทธิ์โฟลเดอร์เป็น “ผู้ที่มีลิงก์ · ผู้อ่าน” แล้วกดสร้างดัชนีรูปภาพใหม่<br><br>
         ลิงก์ใน QR ควรเป็น URL ถาวรของหน้านี้ เพื่อให้สติ๊กเกอร์ที่พิมพ์แล้วยังใช้ได้แม้ Deploy ใหม่</p>
     </div>
@@ -890,7 +894,7 @@ const S = {
   pin: '',
   items:[], checks:[], fixes:[], loans:[], staff:[], roles:{}, ward:null, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', shown:24, pickShown:36, ckShown:40,
-  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}
+  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}, served:''
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                 'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1201,25 +1205,47 @@ async function boot(){
   if(!S.api){ showConn('ยังไม่ได้ระบุ URL ของ Web App กรุณาไปที่หน้าตั้งค่า'); return; }
 
   /* แสดงข้อมูลที่เก็บไว้ในเครื่องก่อน ผู้ใช้จะได้ไม่ต้องรอ */
-  let hadCache=false;
-  const cached=store.get('kp.snap');
-  if(cached){
-    try{ apply(JSON.parse(cached)); hadCache=true;
+  const snap=readSnap();
+  if(snap){
+    try{ apply(snap.d);
          $('#dashSub').textContent+=' · กำลังอัปเดตข้อมูลล่าสุด…'; }catch(e){}
   }
   try{
     const d=await jsonp({action:'bootstrap',month:S.month||''});
     apply(d); saveSnap(d);
+    S.served=d.served||'';
     $('#conn').classList.remove('on'); $('#led').className='led ok';
     handleDeepLink();
   }catch(e){
-    if(hadCache){ $('#led').className='led err';
-      toast('ใช้ข้อมูลที่บันทึกไว้ในเครื่อง เชื่อมต่อไม่ได้: '+e.message,'bad'); }
+    if(snap){
+      $('#led').className='led err';
+      showConn('เชื่อมต่อไม่สำเร็จ: '+e.message+
+        ' — ข้อมูลที่เห็นเป็นของเมื่อ '+Math.round(snap.hrs*60)+' นาทีก่อน');
+    }
     else showConn(e.message);
   }
 }
 function saveSnap(d){
-  try{ store.set('kp.snap', JSON.stringify(d)); }catch(e){}
+  try{ store.set('kp.snap', JSON.stringify({at:Date.now(), d:d})); }catch(e){}
+}
+const SNAP_MAX_HOURS = 12;   /* ข้อมูลสำรองที่เก่ากว่านี้จะไม่ถูกนำมาแสดง */
+function readSnap(){
+  try{
+    const raw=store.get('kp.snap'); if(!raw) return null;
+    const o=JSON.parse(raw);
+    if(!o||!o.d||!o.at) return null;                 /* รูปแบบเก่า ทิ้งไป */
+    const hrs=(Date.now()-o.at)/3600000;
+    if(hrs>SNAP_MAX_HOURS) return null;
+    return {d:o.d, hrs:hrs};
+  }catch(e){ return null; }
+}
+function clearLocal(){
+  try{
+    ['kp.snap'].forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
+  S.ckCache={}; S.checks=[]; S.items=[]; S.loans=[]; S.fixes=[];
+  toast('ล้างข้อมูลในเครื่องแล้ว กำลังโหลดใหม่…','good');
+  setTimeout(()=>location.reload(), 700);
 }
 function showConn(msg){
   $('#connMsg').textContent=msg+' — ข้อมูลจึงยังไม่แสดง ลองกดปุ่มลองใหม่ หรือตรวจ URL ในหน้าตั้งค่า';
@@ -1515,7 +1541,9 @@ function renderDash(){
   const pct=live.length?Math.round(done/live.length*100):0;
 
   $('#dashSub').textContent=`รอบ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
-    `· เหลืออีก ${live.length-done} รายการ`;
+    `· เหลืออีก ${live.length-done} รายการ`+
+    (S.served?` · ข้อมูล ณ ${new Date(S.served).toLocaleTimeString('th-TH',
+      {hour:'2-digit',minute:'2-digit'})} น.`:'');
   $('#heroTitle').textContent = pct===100
     ? 'ตรวจครบทุกรายการแล้ว' : pct>=70 ? 'ใกล้ครบแล้ว อีกนิดเดียว'
     : pct>0 ? 'ความคืบหน้าการตรวจสอบ' : 'ยังไม่เริ่มตรวจรอบนี้';
