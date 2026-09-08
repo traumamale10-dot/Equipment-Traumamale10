@@ -648,6 +648,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <div class="card"><h3>ชื่นชมผู้ตรวจครบก่อน</h3><div class="honor" id="honor"></div></div>
       <div class="card"><h3>อายุการใช้งานครุภัณฑ์</h3><div id="byAge"></div></div>
       <div class="card"><h3>ค้างตรวจมากที่สุด</h3><div class="rank" id="topOwner"></div></div>
+      <div class="card"><h3>สถานะการยืม-คืน</h3><div id="loanStat"></div></div>
       <div class="card"><h3>ครุภัณฑ์ที่ถูกยืมอยู่</h3><div id="openLoan"></div></div>
       <div class="card"><h3>งานซ่อมที่ยังไม่ปิด</h3><div id="openFix"></div></div>
     </div>
@@ -987,7 +988,7 @@ const key = it => it.cat + '|' + it.code;
 /* กุญแจสำหรับจับคู่บันทึกตรวจ/ส่งซ่อม — ตัดช่องว่างและตัวพิมพ์ออก
    กันกรณีเลขครุภัณฑ์ในชีตเว้นวรรคไม่เท่ากัน */
 const nk = v => String(v==null?'':v).replace(/\s+/g,'').toLowerCase();
-const ck = it => it.cat + '|' + nk(it.code);
+const ck = it => it._k || (it._k = it.cat + '|' + nk(it.code));
 const thMonth = mk => { const [y,m]=mk.split('-'); return TH_MONTH[+m-1] + ' ' + (+y+543); };
 const imgUrl = (id,w) => id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w'+(w||320) : '';
 const baht = v => (Number(v)||0).toLocaleString('th-TH',
@@ -1331,6 +1332,8 @@ async function reload(){
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
   S.loans=d.loans||S.loans;
+  /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
+  S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
   if(d.month) S.ckCache[d.month]=S.checks;
   S.staff=d.staff||S.staff; S.roles=d.roles||S.roles; S.ward=d.ward||S.ward;
   const ow=sortByStaff(d.owners||[]);
@@ -1405,8 +1408,9 @@ function openFixMap(){
 const nz = v => String(v==null?'':v).normalize('NFKC').replace(/\s+/g,'').trim();
 const ST = { alive:nz('มีของ'), gone:nz('แทงจำหน่าย'), broke:nz('ชำรุด'),
              lost:nz('ไม่พบ'), lend:nz('ถูกยืม'), fix:nz('ส่งซ่อม'), wait:nz('รอซ่อม') };
-const isGone   = it => nz(it.status)===ST.gone;
-const isBroken = it => nz(it.status)===ST.broke || nz(it.status)===ST.lost;
+const stOf     = it => it._s || (it._s = nz(it.status));
+const isGone   = it => stOf(it)===ST.gone;
+const isBroken = it => stOf(it)===ST.broke || stOf(it)===ST.lost;
 const ALIVE = it => !isGone(it);
 function renderAll(){ renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); }
 
@@ -1488,23 +1492,6 @@ function renderAlerts(){
       return wcard(i, i.status, 't-bad', meta, true);
     }),
     go:()=>goFilter({f:'broken'})});
-
-  /* แทงจำหน่ายในรอบเดือนนี้ ไว้ตรวจทานก่อนปิดรอบ */
-  const goneNow=S.checks.filter(c=>nz(c.result)===ST.gone);
-  if(goneNow.length) groups.push({
-    key:'disposed', title:'แทงจำหน่ายในรอบ '+thMonth(S.month), n:goneNow.length,
-    col:'var(--dim)', bg:'#EFEDF3',
-    cards: goneNow.map(c=>{
-      const it=find(c.cat,c.code)||{name:c.name,code:c.code,img:''};
-      const d=c.at?new Date(c.at):null;
-      const meta = (c.note?`${esc(c.note)}<br>`:'') +
-        (c.by?`บันทึกโดย <b>${esc(c.by)}</b>`:'') +
-        (d&&!isNaN(d)?`<br>${d.toLocaleDateString('th-TH',
-          {day:'numeric',month:'short'})} · ${d.toLocaleTimeString('th-TH',
-          {hour:'2-digit',minute:'2-digit'})} น.`:'');
-      return wcard(it,'แทงจำหน่าย','t-off',meta,false);
-    }),
-    go:()=>goFilter({f:'disposed'})});
 
   if(wait.length) groups.push({
     key:'wait', title:'รอส่งซ่อมในเวลาราชการ', n:wait.length,
@@ -1676,10 +1663,11 @@ function renderDash(){
   const done=live.filter(i=>chk(cm,i)).length;
   /* นับจากสถานะปัจจุบันของทุกรายการ ไม่ตัดรายการที่แทงจำหน่ายออก
      เพราะเดิมของที่ตรวจพบชำรุดแล้วถูกแทงจำหน่ายทีหลัง จะหายไปจากทุกช่อง */
-  /* ถูกยืมนับสองทาง คือมีบันทึกในเมนูยืม-คืน หรือสถานะในทะเบียนเป็นถูกยืม */
+  /* ถูกยืมนับจากบันทึกในเมนูยืม-คืนเท่านั้น ให้ตัวเลขตรงกับหน้านั้นเสมอ
+     ส่วนของที่สถานะเป็นถูกยืมแต่ไม่มีบันทึก แยกไปแสดงเป็นการ์ดเตือนต่างหาก */
   const lm = openLoanMap();
-  const lendNoRec = S.items.filter(i=>nz(i.status)===ST.lend && !lm[ck(i)]);
-  const lendCount = S.loans.filter(l=>l.state!=='คืนแล้ว').length + lendNoRec.length;
+  const lendNoRec = S.items.filter(i=>stOf(i)===ST.lend && !lm[ck(i)]);
+  const lendCount = S.loans.filter(l=>l.state!=='คืนแล้ว').length;
   const bad  = S.items.filter(isBroken).length;
   const gone = S.items.filter(isGone).length;
   const goneNow = S.checks.filter(c=>nz(c.result)===ST.gone).length;
@@ -1865,6 +1853,34 @@ function renderDash(){
     goFilter({f:'todo', owner: o==='ไม่ระบุผู้รับผิดชอบ' ? '' : o});
   });
 
+  /* สรุปสถานะการยืม-คืน */
+  const mk0=S.month+'';
+  const backThis=S.loans.filter(l=>l.state==='คืนแล้ว' && String(l.back||'').length>=10 &&
+    (()=>{ const m=String(l.back).match(/(\d{4})-(\d{2})/); return m && (m[1]+'-'+m[2])===mk0; })());
+  const lnRows=[
+    ['กำลังยืมอยู่', S.loans.filter(l=>l.state!=='คืนแล้ว').length, 'var(--warn)','goloan'],
+    ['ต้องติดตาม',   S.loans.filter(l=>l.state!=='คืนแล้ว' && (isOver(l)||needFollow(l))).length,
+      'var(--bad)','goover'],
+    ['ถูกยืม ไม่มีบันทึก', lendNoRec.length, 'var(--bad)','loanx'],
+    ['คืนแล้วในรอบนี้', backThis.length, 'var(--ok)','']
+  ];
+  const lnTot=Math.max(1, lnRows.reduce((a,r)=>a+r[1],0));
+  $('#loanStat').innerHTML = lnRows.map(([lb,n,col,act])=>
+    `<div style="margin-bottom:12px${act?';cursor:pointer':''}"${act?` data-lact="${act}"`:''}>
+      <div class="stat" style="border:0;padding:2px 0">
+        <span>${lb}</span><b style="color:${col}">${n}</b></div>
+      <div class="meter"><i style="width:${Math.round(n/lnTot*100)}%;background:${col}"></i></div>
+    </div>`).join('')
+    + `<div class="note">รวมรายการยืมทั้งหมด ${S.loans.length} ครั้ง · `
+    + `คืนแล้ว ${S.loans.filter(l=>l.state==='คืนแล้ว').length} ครั้ง</div>`;
+  $$('#loanStat [data-lact]').forEach(el=>el.onclick=()=>{
+    const a=el.dataset.lact;
+    if(a==='loanx') return goFilter({f:'loanx'});
+    S.lnTab = a==='goover' ? 'over' : 'out';
+    $$('[data-ln]').forEach(x=>x.classList.toggle('on',x.dataset.ln===S.lnTab));
+    renderLoan(); go('loan');
+  });
+
   /* ครุภัณฑ์ที่ถูกยืมอยู่ */
   const outLoans=S.loans.filter(l=>l.state!=='คืนแล้ว');
   const overLoans=outLoans.filter(l=>isOver(l)||needFollow(l));
@@ -1943,7 +1959,7 @@ function matchList(){
   const q=$('#q').value.trim().toLowerCase();
   const c=$('#fCat').value, st=$('#fStatus').value, ow=$('#fOwner').value;
   const gr=$('#fGrp').value;
-  const cm=checkMap(), of=openFixMap();
+  const cm=checkMap(), of=openFixMap(), lm=openLoanMap();   /* สร้างครั้งเดียว */
   return S.items.filter(i=>{
     if(c&&i.cat!==c) return false;
     if(gr&&(i.grp||(i.cat==='off'?'pn':'nurse'))!==gr) return false;
@@ -1954,8 +1970,8 @@ function matchList(){
     if(S.filter==='broken'&&!isBroken(i)) return false;
     if(S.filter==='disposed'&&!isGone(i)) return false;
     if(S.filter==='fix'&&!of[ck(i)]) return false;
-    if(S.filter==='loan'&&!openLoanMap()[ck(i)]) return false;
-    if(S.filter==='loanx'&&!(nz(i.status)===ST.lend && !openLoanMap()[ck(i)])) return false;
+    if(S.filter==='loan'&&!lm[ck(i)]) return false;
+    if(S.filter==='loanx'&&!(nz(i.status)===ST.lend && !lm[ck(i)])) return false;
     if(S.filter==='old'){ const a=ageOf(i.recv); if(a===null||a<10) return false; }
     if(S.filter==='norecv' && i.recv) return false;
     if(S.filter==='wait'){
@@ -3261,6 +3277,8 @@ async function submitLoan(k){
       out:$('#lnOut').value, due:($('#lnDue').disabled?'':$('#lnDue').value),
       why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim()});
     S.loans=d.loans||S.loans;
+  /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
+  S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
   if(d.month) S.ckCache[d.month]=S.checks;
     i.status='ถูกยืม';
     if($('#lnPlace').value.trim()) i.loc=$('#lnPlace').value.trim();
@@ -3324,6 +3342,8 @@ async function submitReturn(row,cat,itemRow){
       loc:$('#lnLoc').value.trim(),
       got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim()});
     S.loans=d.loans||S.loans;
+  /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
+  S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
   if(d.month) S.ckCache[d.month]=S.checks;
     closeSheet(); await reload(); toast('บันทึกการรับคืนแล้ว','good');
   }catch(e){ toast(e.message,'bad'); }
