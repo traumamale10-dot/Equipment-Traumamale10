@@ -316,11 +316,13 @@ select.inp{appearance:none;padding-right:38px;
 .field textarea{background:var(--surface);border:1.5px solid var(--line2);border-radius:13px;
   padding:12px 16px;font-size:16px;resize:vertical;min-height:78px;font-family:var(--f-b)}
 .seg{display:flex;gap:9px;flex-wrap:wrap}
-.seg button{flex:1;min-width:88px;padding:14px 8px;border-radius:14px;border:1.5px solid var(--line2);
+.seg button{flex:1 1 auto;min-width:84px;padding:13px 10px;border-radius:14px;border:1.5px solid var(--line2);
   background:var(--surface);font-family:var(--f-d);font-weight:500;font-size:15.5px;transition:.15s}
 .seg button.on{background:var(--plum);border-color:var(--plum);color:#fff}
 .seg button.on[data-v="ชำรุด"],.seg button.on[data-v="ไม่พบ"]{background:var(--bad);border-color:var(--bad)}
 .seg button.on[data-v="ปกติ"]{background:var(--ok);border-color:var(--ok)}
+.seg button.on[data-v="ถูกยืม"]{background:var(--warn);border-color:var(--warn)}
+.seg button.on[data-v="แทงจำหน่าย"]{background:var(--dim);border-color:var(--dim)}
 .tl{border-left:2.5px solid var(--line2);padding-left:18px;margin-left:6px}
 .tl .e{position:relative;padding-bottom:18px;font-size:15.5px}
 .tl .e::before{content:'';position:absolute;left:-25px;top:7px;width:10px;height:10px;border-radius:9px;
@@ -1613,7 +1615,8 @@ function renderDash(){
   const cm=checkMap(), of=openFixMap(), live=S.items.filter(ALIVE);
   const done=live.filter(i=>chk(cm,i)).length;
   const bad=live.filter(i=>{const c=chk(cm,i);
-    return (c&&(c.result==='ชำรุด'||c.result==='ไม่พบ'))||i.status==='ชำรุด';}).length;
+    return (c&&(c.result==='ชำรุด'||c.result==='ไม่พบ'))
+        || i.status==='ชำรุด' || i.status==='ไม่พบ';}).length;
   const pct=live.length?Math.round(done/live.length*100):0;
 
   $('#dashSub').textContent=`รอบ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
@@ -1797,6 +1800,13 @@ function renderDash(){
     : '<div class="note">ไม่มีงานซ่อมค้าง</div>';
   $$('#openFix .stat.click').forEach(el=>el.onclick=()=>openFixDetail(+el.dataset.r));
 }
+/* สีป้ายของผลการตรวจ */
+function resultTag(r){
+  if(r==='ปกติ') return 't-ok';
+  if(r==='ถูกยืม') return 't-warn';
+  if(r==='แทงจำหน่าย') return 't-off';
+  return 't-bad';
+}
 function statusTag(s){
   if(s==='มีของ') return 't-ok';
   if(s==='แทงจำหน่าย') return 't-off';
@@ -1909,7 +1919,7 @@ function openItem(k){
         <dt>สถานะ</dt><dd><span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></dd>
         <dt>ใบคุม</dt><dd>${doc?`<a href="${doc}" target="_blank" rel="noopener">เปิดใบคุม</a>`:'ไม่มีไฟล์'}</dd>
         <dt>ตรวจเดือนนี้</dt><dd>${chkNow
-          ?`<span class="tag ${chkNow.result==='ปกติ'?'t-ok':'t-bad'}">${esc(chkNow.result)}</span>`+
+          ?`<span class="tag ${resultTag(chkNow.result)}">${esc(chkNow.result)}</span>`+
            `<div class="meta" style="margin-top:7px">${checkMeta(chkNow)}</div>`
           :`<span class="tag t-bad">ยังไม่ได้ตรวจ</span>`}</dd>
         ${i.note?`<dt>หมายเหตุ</dt><dd>${esc(i.note)}</dd>`:''}
@@ -2703,8 +2713,10 @@ function openCheck(k,how){
       ${chkNow?`<div class="note" style="color:var(--warn);margin-bottom:16px">
         เดือนนี้บันทึกไว้แล้วว่า “${esc(chkNow.result)}” — บันทึกซ้ำจะเพิ่มเป็นรายการใหม่</div>`:''}
       <div class="field"><label>ผลการตรวจ</label>
-        <div class="seg" id="ckSeg">${['ปกติ','ชำรุด','ไม่พบ','ถูกยืม'].map((v,n)=>
-          `<button data-v="${v}" class="${n===0?'on':''}">${v}</button>`).join('')}</div></div>
+        <div class="seg" id="ckSeg">${['ปกติ','ชำรุด','ไม่พบ','ถูกยืม','แทงจำหน่าย'].map((v,n)=>
+          `<button data-v="${v}" class="${n===0?'on':''}">${v}</button>`).join('')}</div>
+        <div class="note" id="ckHint" style="margin-top:7px">
+          เลือกตามสภาพที่พบจริง ระบบจะอัปเดตสถานะในทะเบียนให้อัตโนมัติ</div></div>
       <div class="field"><label>จุดวาง / ตำแหน่งที่พบ</label>
         <input class="inp" id="ckLoc" value="${esc(i.loc||'')}" placeholder="เช่น ห้องหัตถการ, ทีม 2"></div>
       <div class="field"><label>สภาพ / หมายเหตุ</label>
@@ -2717,9 +2729,22 @@ function openCheck(k,how){
       <button class="btn go" id="ckSave" style="width:100%;justify-content:center;padding:15px"
         onclick="submitCheck()">บันทึกผลการตรวจ</button>
     </div>`;
+  const CK_HINT={
+    'ปกติ':'เลือกตามสภาพที่พบจริง ระบบจะอัปเดตสถานะในทะเบียนให้อัตโนมัติ',
+    'ชำรุด':'สถานะจะเปลี่ยนเป็น ชำรุด ควรแจ้งส่งซ่อมต่อจากหน้ารายละเอียด',
+    'ไม่พบ':'สถานะจะเปลี่ยนเป็น ไม่พบ ควรตรวจสอบกับหน่วยงานที่อาจยืมไป',
+    'ถูกยืม':'สถานะจะเปลี่ยนเป็น ถูกยืม ควรบันทึกผู้ยืมในเมนูยืม-คืนด้วย',
+    'แทงจำหน่าย':'สถานะจะเปลี่ยนเป็น แทงจำหน่าย และตัดออกจากยอดที่ต้องตรวจในรอบถัดไป '+
+      'ใช้เมื่อผ่านการอนุมัติจำหน่ายแล้วเท่านั้น'
+  };
   $$('#ckSeg button').forEach(b=>b.onclick=()=>{
     $$('#ckSeg button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on'); ckState.result=b.dataset.v;
+    const h=$('#ckHint');
+    if(h){
+      h.textContent=CK_HINT[b.dataset.v]||'';
+      h.style.color = b.dataset.v==='แทงจำหน่าย' ? 'var(--bad)' : 'var(--dim)';
+    }
   });
   $('#scrim').classList.add('on');
 }
@@ -2755,7 +2780,7 @@ async function submitCheck(){
       lat:pos?pos.lat:'', lng:pos?pos.lng:'', acc:pos?pos.acc:''});
     S.checks=d.checks||S.checks;
     S.ckCache[S.month]=S.checks;
-    if(ckState.result!=='ปกติ') i.status=ckState.result==='ถูกยืม'?'ถูกยืม':ckState.result;
+    if(ckState.result!=='ปกติ') i.status=ckState.result;
     if($('#ckLoc').value.trim()) i.loc=$('#ckLoc').value.trim();
     closeSheet(); renderAll();
     toast('บันทึกผลการตรวจ '+i.code+' แล้ว'+
@@ -2835,7 +2860,7 @@ function renderCheck(){
       <div class="mid"><b>${esc(i.name)}</b>
         <span>${esc(i.code)} · ${esc(i.owner||'—')}${i.loc?' · '+esc(i.loc):''}</span>
         ${checkMeta(c)}</div>
-      ${c?`<span class="tag ${c.result==='ปกติ'?'t-ok':'t-bad'}">${esc(c.result)}</span>`
+      ${c?`<span class="tag ${resultTag(c.result)}">${esc(c.result)}</span>`
         :`<span class="tag t-warn">ตรวจ</span>`}</button>`;
   }).join('') + (list.length>S.ckShown
     ? `<button class="btn" style="justify-content:center;padding:14px"
