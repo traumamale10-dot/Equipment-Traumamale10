@@ -445,6 +445,10 @@ select.inp{appearance:none;padding-right:38px;
   h2.vt{font-size:23px} p.vs{font-size:14.5px;margin-bottom:18px}
         .vitals{gap:18px} .vitals b{font-size:23px}   .card{padding:18px}
   .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .watch{padding:15px 14px}
+  .wgrid{grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:10px}
+  .wcard .nm{font-size:13.5px} .wcard .cd{font-size:12px} .wcard .mt{font-size:12px}
+  .wgrp .hd b{font-size:14.5px}
   .item .nm{font-size:14.5px} .item .cd{font-size:13px} .item .ow{font-size:13px}
   .kv{grid-template-columns:96px 1fr;font-size:15px}
   .sheet{max-height:90vh}
@@ -452,32 +456,45 @@ select.inp{appearance:none;padding-right:38px;
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-/* ══════════ แถบเตือนบนหน้าภาพรวม ══════════ */
-#alerts{display:grid;gap:10px;margin-bottom:16px}
+/* ══════════ ครุภัณฑ์ที่ต้องติดตาม (มีรูป) ══════════ */
+#alerts{margin-bottom:16px}
 #alerts:empty{display:none}
-.alert{display:flex;align-items:center;gap:13px;padding:13px 16px;border-radius:16px;
-  border:1.5px solid;background:var(--surface);box-shadow:var(--sh);text-align:left;
-  width:100%;transition:.16s;cursor:pointer}
-.alert:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
-.alert .ic{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
-  font-family:var(--f-d);font-weight:700;font-size:17px}
-.alert .tx{flex:1;min-width:0}
-.alert .tx b{display:block;font-family:var(--f-d);font-weight:600;font-size:16px;line-height:1.35}
-.alert .tx span{font-size:14px;color:var(--dim)}
-.alert .go{color:var(--dim2);font-size:22px;line-height:1;flex:none}
-.alert.red{border-color:#F3CBD6;background:linear-gradient(90deg,#FEF4F7,var(--surface) 60%)}
-.alert.red .ic{background:var(--bad-bg);color:var(--bad)}
-.alert.red .tx b{color:#8E2A44}
-.alert.amber{border-color:#F5E0B8;background:linear-gradient(90deg,#FFFAF0,var(--surface) 60%)}
-.alert.amber .ic{background:var(--warn-bg);color:var(--warn)}
-.alert.amber .tx b{color:#8A5C10}
-.alert.info{border-color:var(--line2);background:linear-gradient(90deg,#F8F4FF,var(--surface) 60%)}
-.alert.info .ic{background:var(--lav-soft);color:var(--plum)}
-.alert.info .tx b{color:var(--plum)}
-.alert.ok{border-color:#BFE9D8;background:linear-gradient(90deg,#F1FBF7,var(--surface) 60%);
-  cursor:default}
-.alert.ok .ic{background:var(--ok-bg);color:var(--ok)}
-.alert.ok .tx b{color:var(--ok)}
+.watch{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);
+  padding:18px 20px;box-shadow:var(--sh);margin-bottom:16px}
+.watch>h3{margin:0 0 4px;font-family:var(--f-d);font-size:16px;font-weight:600;color:var(--plum)}
+.watch>.sub{font-size:14px;color:var(--dim);margin-bottom:14px}
+.wgrp{margin-bottom:16px}
+.wgrp:last-child{margin-bottom:0}
+.wgrp .hd{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.wgrp .hd b{font-family:var(--f-d);font-weight:600;font-size:15px}
+.wgrp .hd .n{font-family:var(--f-d);font-weight:700;font-size:14px;padding:1px 10px;
+  border-radius:99px}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:12px}
+.wcard{background:var(--surface);border:1.5px solid var(--line);border-radius:15px;
+  overflow:hidden;text-align:left;width:100%;transition:.2s;box-shadow:var(--sh);
+  display:flex;flex-direction:column}
+.wcard:hover{transform:translateY(-3px);box-shadow:var(--sh2)}
+.wcard .ph{aspect-ratio:4/3;background:var(--lav-soft);position:relative;overflow:hidden}
+.wcard .ph img{width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:1}
+.wcard .ph .none{position:absolute;inset:0;display:grid;place-items:center;
+  color:var(--dim2);font-size:12.5px}
+.wcard .ph .tag{position:absolute;top:8px;left:8px;z-index:2}
+.wcard .bd{padding:11px 13px 13px;flex:1;display:flex;flex-direction:column;gap:4px}
+.wcard .nm{font-size:14.5px;font-weight:500;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wcard .cd{font-family:var(--f-d);font-weight:500;font-size:13px;color:var(--plum);
+  word-break:break-all}
+.wcard .mt{font-size:13px;color:var(--dim);margin-top:auto;line-height:1.5}
+.wcard .mt b{color:var(--ink2);font-weight:500}
+.wcard.late{border-color:#F3CBD6}
+.wcard.late .mt b{color:var(--bad)}
+.wnone{display:flex;align-items:center;gap:13px;padding:15px 18px;border-radius:16px;
+  border:1.5px solid #BFE9D8;background:linear-gradient(90deg,#F1FBF7,var(--surface) 60%)}
+.wnone .ic{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
+  background:var(--ok-bg);color:var(--ok);font-size:18px;font-weight:700}
+.wnone b{display:block;font-family:var(--f-d);font-weight:600;font-size:16px;color:var(--ok)}
+.wnone span{font-size:14px;color:var(--dim)}
+.wmore{grid-column:1/-1;justify-content:center;padding:12px}
 
 nav.rail button{position:relative}
 nav.rail .badge{position:absolute;top:4px;right:8px;min-width:19px;height:19px;padding:0 5px;
@@ -1326,94 +1343,113 @@ function openFixMap(){
 const ALIVE = it => it.status!=='แทงจำหน่าย';
 function renderAll(){ renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); }
 
-/* ───── แถบเตือนบนหน้าภาพรวม ─────
-   แสดงเฉพาะเรื่องที่ต้องลงมือทำ เรียงตามความเร่งด่วน แตะแล้วไปยังรายการนั้นทันที */
+/* ───── ครุภัณฑ์ที่ต้องติดตาม แสดงเป็นการ์ดพร้อมรูป ─────
+   แสดงเฉพาะของที่ไม่ได้อยู่กับที่ คือถูกยืม ส่งซ่อม และรอซ่อมเวลาราชการ */
+const WMAX = 8;   /* จำนวนการ์ดสูงสุดต่อกลุ่ม ที่เหลือกดดูทั้งหมด */
+
+function wcard(it, tag, tagCls, meta, late){
+  const u = it ? imgUrl(it.img, 320) : '';
+  return `<button class="wcard${late?' late':''}" data-k="${it?esc(key(it)):''}">
+    <div class="ph"><div class="none">ไม่มีรูป</div>
+      ${u?`<img loading="lazy" src="${u}" alt="" onerror="this.style.display='none'">`:''}
+      <span class="tag ${tagCls}">${esc(tag)}</span></div>
+    <div class="bd">
+      <div class="nm">${esc(it?it.name:'—')}</div>
+      <div class="cd">${esc(it?it.code:'')}</div>
+      <div class="mt">${meta}</div>
+    </div></button>`;
+}
+
 function renderAlerts(){
   const box=$('#alerts'); if(!box) return;
   const cm=checkMap(), of=openFixMap();
   const live=S.items.filter(ALIVE);
-  const A=[];
+  const find=(cat,code)=>S.items.find(i=>i.cat===cat && nk(i.code)===nk(code));
 
-  const now=new Date();
-  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  const leftDays=lastDay-now.getDate();
+  const outL  = S.loans.filter(l=>l.state!=='คืนแล้ว');
+  const overL = outL.filter(l=>isOver(l)||needFollow(l));
+  const fixAll= Object.values(of);
+  const wait  = fixAll.filter(f=>f.state==='รอซ่อมเวลาราชการ');
+  const sent  = fixAll.filter(f=>f.state!=='รอซ่อมเวลาราชการ');
 
-  /* 1. ของยืมที่ต้องติดตาม */
-  const outL=S.loans.filter(l=>l.state!=='คืนแล้ว');
-  const overL=outL.filter(l=>isOver(l)||needFollow(l));
-  if(overL.length) A.push({lv:'red',ic:'!',
-    t:'ครุภัณฑ์เลยกำหนดคืน '+overL.length+' รายการ',
-    s:overL.slice(0,3).map(l=>l.name+' ('+l.who+')').join(' · ')+
-      (overL.length>3?' และอีก '+(overL.length-3)+' รายการ':''),
-    go:()=>{S.lnTab='over';$$('[data-ln]').forEach(x=>
-      x.classList.toggle('on',x.dataset.ln==='over'));renderLoan();go('loan');}});
+  const groups=[];
 
-  /* 2. ชำรุดหรือไม่พบ แต่ยังไม่ได้แจ้งซ่อม */
-  const brokenNoFix=live.filter(i=>
-    (i.status==='ชำรุด'||i.status==='ไม่พบ') && !of[ck(i)]);
-  if(brokenNoFix.length) A.push({lv:'red',ic:'!',
-    t:'ชำรุด/ไม่พบ แต่ยังไม่ได้แจ้งซ่อม '+brokenNoFix.length+' รายการ',
-    s:brokenNoFix.slice(0,3).map(i=>i.name).join(' · ')+
-      (brokenNoFix.length>3?' และอีก '+(brokenNoFix.length-3)+' รายการ':''),
-    go:()=>goFilter({f:'broken'})});
+  if(outL.length) groups.push({
+    key:'loan', title:'ถูกยืมออกนอกหน่วยงาน', n:outL.length,
+    col:'var(--warn)', bg:'var(--warn-bg)',
+    cards: outL.map(l=>{
+      const it=find(l.cat,l.code)||{name:l.name,code:l.code,img:''};
+      const late=isOver(l)||needFollow(l);
+      const meta = `ผู้ยืม <b>${esc(l.who||'—')}</b>` +
+        (l.place?`<br>ไปที่ ${esc(l.place)}`:'') +
+        (l.due ? `<br>กำหนดคืน <b>${esc(l.due)}</b>${
+                   isOver(l)?' (เกิน '+daysOver(l)+' วัน)':''}`
+               : `<br><b>ยังไม่ระบุกำหนดคืน</b>${
+                   needFollow(l)?' · ยืมมา '+daysOut(l)+' วัน':''}`);
+      return wcard(it, late?'ต้องติดตาม':'กำลังยืม', late?'t-bad':'t-warn', meta, late);
+    }),
+    go:()=>{S.lnTab='out';$$('[data-ln]').forEach(x=>
+      x.classList.toggle('on',x.dataset.ln==='out'));renderLoan();go('loan');}});
 
-  /* 3. รอซ่อมเวลาราชการ */
-  const waitFix=Object.values(of).filter(f=>f.state==='รอซ่อมเวลาราชการ');
-  if(waitFix.length) A.push({lv:'amber',ic:'⏱',
-    t:'รอส่งซ่อมในเวลาราชการ '+waitFix.length+' รายการ',
-    s:waitFix.slice(0,3).map(f=>f.name).join(' · ')+
-      (waitFix.length>3?' และอีก '+(waitFix.length-3)+' รายการ':''),
-    go:()=>{S.fxTab='wait';$$('[data-fx]').forEach(x=>
-      x.classList.toggle('on',x.dataset.fx==='wait'));renderFix();go('fix');}});
-
-  /* 4. งานซ่อมค้างนาน */
-  const oldFix=Object.values(of).filter(f=>{
-    if(!f.sent) return false;
-    return (new Date()-new Date(f.sent))/86400000 > 30;
-  });
-  if(oldFix.length) A.push({lv:'amber',ic:'⏱',
-    t:'งานซ่อมค้างเกิน 30 วัน '+oldFix.length+' รายการ',
-    s:'ควรติดตามกับหน่วยงานที่รับซ่อม',
+  if(sent.length) groups.push({
+    key:'fix', title:'ส่งซ่อมอยู่', n:sent.length,
+    col:'var(--plum)', bg:'var(--lav-soft)',
+    cards: sent.map(f=>{
+      const it=find(f.cat,f.code)||{name:f.name,code:f.code,img:''};
+      const days=f.sent?Math.floor((new Date()-new Date(f.sent))/86400000):0;
+      const meta = `อาการ ${esc(f.issue||'—')}` +
+        (f.to?`<br>ส่งที่ ${esc(f.to)}`:'') +
+        (f.sent?`<br>ส่งเมื่อ <b>${esc(f.sent)}</b>${days>30?' (นาน '+days+' วัน)':''}`:'');
+      return wcard(it,'ส่งซ่อม','t-fix',meta, days>30);
+    }),
     go:()=>{S.fxTab='open';$$('[data-fx]').forEach(x=>
       x.classList.toggle('on',x.dataset.fx==='open'));renderFix();go('fix');}});
 
-  /* 5. ค้างตรวจ เตือนแรงขึ้นเมื่อใกล้สิ้นเดือน */
-  const todo=live.filter(i=>!chk(cm,i)).length;
-  if(todo && S.month===curMonth){
-    const urgent=leftDays<=10;
-    A.push({lv:urgent?'red':'info',ic:String(todo),
-      t:'ยังไม่ได้ตรวจ '+todo+' รายการ',
-      s:urgent?'เหลืออีก '+leftDays+' วันจะสิ้นรอบเดือนนี้'
-              :'รอบ '+thMonth(S.month)+' เหลือเวลาอีก '+leftDays+' วัน',
-      go:()=>{S.ckTab='todo';$$('[data-ck]').forEach(x=>
-        x.classList.toggle('on',x.dataset.ck==='todo'));renderCheck();go('check');}});
-  }
+  if(wait.length) groups.push({
+    key:'wait', title:'รอส่งซ่อมในเวลาราชการ', n:wait.length,
+    col:'var(--warn)', bg:'var(--warn-bg)',
+    cards: wait.map(f=>{
+      const it=find(f.cat,f.code)||{name:f.name,code:f.code,img:''};
+      const meta = `อาการ ${esc(f.issue||'—')}` +
+        (f.sent?`<br>แจ้งเมื่อ <b>${esc(f.sent)}</b>`:'') +
+        (f.by?`<br>ผู้แจ้ง ${esc(f.by)}`:'');
+      return wcard(it,'รอซ่อม','t-warn',meta,false);
+    }),
+    go:()=>{S.fxTab='wait';$$('[data-fx]').forEach(x=>
+      x.classList.toggle('on',x.dataset.fx==='wait'));renderFix();go('fix');}});
 
-  /* 6. ยังไม่มีรูปหรือยังไม่ลงราคา */
-  const noImg=live.filter(i=>!i.img).length;
-  if(noImg) A.push({lv:'info',ic:'+',
-    t:'ยังไม่มีรูปครุภัณฑ์ '+noImg+' รายการ',
-    s:'เพิ่มรูปได้จากหน้าแก้ไขข้อมูล ช่วยยืนยันตัวครุภัณฑ์ตอนตรวจและตอนยืม',
-    go:()=>goFilter({})});
+  if(!groups.length){
+    box.innerHTML=`<div class="wnone"><div class="ic">✓</div>
+      <div><b>ครุภัณฑ์อยู่ครบในหน่วยงาน</b>
+      <span>ไม่มีรายการที่ถูกยืม ส่งซ่อม หรือรอซ่อม</span></div></div>`;
+  } else {
+    const total=groups.reduce((a,g)=>a+g.n,0);
+    box.innerHTML=`<div class="watch">
+      <h3>ครุภัณฑ์ที่ต้องติดตาม ${total} รายการ</h3>
+      <div class="sub">แตะที่การ์ดเพื่อเปิดรายละเอียดครุภัณฑ์ หรือแตะหัวข้อกลุ่มเพื่อดูทั้งหมด</div>
+      ${groups.map(g=>`<div class="wgrp">
+        <div class="hd"><b style="color:${g.col}">${esc(g.title)}</b>
+          <span class="n" style="background:${g.bg};color:${g.col}">${g.n}</span>
+          <button class="btn" data-go="${g.key}"
+            style="margin-left:auto;padding:6px 13px;font-size:14px">ดูทั้งหมด</button></div>
+        <div class="wgrid">${g.cards.slice(0,WMAX).join('')}
+          ${g.n>WMAX?`<button class="btn wmore" data-go="${g.key}">และอีก ${
+            g.n-WMAX} รายการ</button>`:''}</div>
+      </div>`).join('')}</div>`;
 
-  if(!A.length){
-    box.innerHTML=`<div class="alert ok"><div class="ic">✓</div>
-      <div class="tx"><b>ไม่มีเรื่องค้างดำเนินการ</b>
-      <span>ตรวจครบ ไม่มีของค้างคืน และไม่มีงานซ่อมที่ต้องติดตาม</span></div></div>`;
-    return;
+    $$('#alerts .wcard').forEach(el=>{
+      if(el.dataset.k) el.onclick=()=>openItem(el.dataset.k);
+    });
+    $$('#alerts [data-go]').forEach(el=>{
+      const g=groups.filter(x=>x.key===el.dataset.go)[0];
+      if(g) el.onclick=ev=>{ ev.stopPropagation(); g.go(); };
+    });
   }
-  const order={red:0,amber:1,info:2};
-  A.sort((a,b)=>order[a.lv]-order[b.lv]);
-  box.innerHTML=A.map((a,i)=>`<button class="alert ${a.lv}" data-i="${i}">
-    <div class="ic">${esc(a.ic)}</div>
-    <div class="tx"><b>${esc(a.t)}</b><span>${esc(a.s)}</span></div>
-    <div class="go">›</div></button>`).join('');
-  $$('#alerts .alert').forEach(el=>{
-    const a=A[+el.dataset.i]; if(a&&a.go) el.onclick=a.go;
-  });
 
   /* ตัวเลขค้างบนเมนูด้านข้าง */
+  const now=new Date();
+  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const todo=live.filter(i=>!chk(cm,i)).length;
   const badge=(v,n)=>{
     const b=document.querySelector(`nav.rail button[data-v="${v}"]`);
     if(!b) return;
@@ -1423,7 +1459,7 @@ function renderAlerts(){
   };
   badge('check', S.month===curMonth?todo:0);
   badge('loan',  overL.length);
-  badge('fix',   waitFix.length+oldFix.length);
+  badge('fix',   fixAll.length);
 }
 
 /* ไปหน้าทะเบียนพร้อมตั้งตัวกรองให้เสร็จ ใช้จากการ์ดบนหน้าภาพรวม */
