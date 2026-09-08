@@ -144,6 +144,7 @@ p.vs{margin:0 0 24px;color:var(--dim);font-size:15.5px}
 .chip-hero.ok b{color:var(--ok)}
 .chip-hero.fix b{color:var(--plum)}
 .chip-hero.hold b{color:var(--warn)}
+.chip-hero.off b{color:var(--dim)}
 .hero .trace{display:block;width:100%;height:56px;margin-top:16px}
 .hero .trace .done{fill:none;stroke:var(--plum);stroke-width:2.2;stroke-linejoin:round;
   stroke-linecap:round}
@@ -670,6 +671,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <button class="chip" data-f="todo">ยังไม่ตรวจเดือนนี้</button>
       <button class="chip" data-f="done">ตรวจแล้ว</button>
       <button class="chip" data-f="broken">ชำรุด/ไม่พบ</button>
+      <button class="chip" data-f="disposed">แทงจำหน่าย</button>
       <button class="chip" data-f="fix">อยู่ระหว่างซ่อม</button>
       <button class="chip" data-f="loan">ถูกยืมอยู่</button>
       <button class="chip" data-f="wait">รอซ่อมเวลาราชการ</button>
@@ -1447,6 +1449,39 @@ function renderAlerts(){
     go:()=>{S.fxTab='open';$$('[data-fx]').forEach(x=>
       x.classList.toggle('on',x.dataset.fx==='open'));renderFix();go('fix');}});
 
+  /* ชำรุดหรือไม่พบ ที่ยังไม่ได้แจ้งซ่อม ต้องเห็นชัดเพราะต้องลงมือทำต่อ */
+  const brokenList=S.items.filter(i=>
+    (i.status==='ชำรุด'||i.status==='ไม่พบ') && !of[ck(i)]);
+  if(brokenList.length) groups.push({
+    key:'broken', title:'ชำรุด / ไม่พบ ยังไม่ได้แจ้งซ่อม', n:brokenList.length,
+    col:'var(--bad)', bg:'var(--bad-bg)',
+    cards: brokenList.map(i=>{
+      const c=chk(cm,i);
+      const meta = (c?`ผลตรวจ <b>${esc(c.result)}</b>`:'สถานะ <b>'+esc(i.status)+'</b>') +
+        (c&&c.note?`<br>${esc(c.note)}`:'') +
+        (c&&c.by?`<br>พบโดย ${esc(c.by)}`:'') +
+        (i.owner?`<br>ผู้รับผิดชอบ ${esc(i.owner)}`:'');
+      return wcard(i, i.status, 't-bad', meta, true);
+    }),
+    go:()=>goFilter({f:'broken'})});
+
+  /* แทงจำหน่ายในรอบเดือนนี้ ไว้ตรวจทานก่อนปิดรอบ */
+  const goneNow=S.checks.filter(c=>c.result==='แทงจำหน่าย');
+  if(goneNow.length) groups.push({
+    key:'disposed', title:'แทงจำหน่ายในรอบ '+thMonth(S.month), n:goneNow.length,
+    col:'var(--dim)', bg:'#EFEDF3',
+    cards: goneNow.map(c=>{
+      const it=find(c.cat,c.code)||{name:c.name,code:c.code,img:''};
+      const d=c.at?new Date(c.at):null;
+      const meta = (c.note?`${esc(c.note)}<br>`:'') +
+        (c.by?`บันทึกโดย <b>${esc(c.by)}</b>`:'') +
+        (d&&!isNaN(d)?`<br>${d.toLocaleDateString('th-TH',
+          {day:'numeric',month:'short'})} · ${d.toLocaleTimeString('th-TH',
+          {hour:'2-digit',minute:'2-digit'})} น.`:'');
+      return wcard(it,'แทงจำหน่าย','t-off',meta,false);
+    }),
+    go:()=>goFilter({f:'disposed'})});
+
   if(wait.length) groups.push({
     key:'wait', title:'รอส่งซ่อมในเวลาราชการ', n:wait.length,
     col:'var(--warn)', bg:'var(--warn-bg)',
@@ -1462,13 +1497,14 @@ function renderAlerts(){
 
   if(!groups.length){
     box.innerHTML=`<div class="wnone"><div class="ic">✓</div>
-      <div><b>ครุภัณฑ์อยู่ครบในหน่วยงาน</b>
-      <span>ไม่มีรายการที่ถูกยืม ส่งซ่อม หรือรอซ่อม</span></div></div>`;
+      <div><b>ครุภัณฑ์อยู่ครบและพร้อมใช้</b>
+      <span>ไม่มีรายการที่ถูกยืม ส่งซ่อม รอซ่อม ชำรุด หรือแทงจำหน่ายในรอบนี้</span></div></div>`;
   } else {
     const total=groups.reduce((a,g)=>a+g.n,0);
     box.innerHTML=`<div class="watch">
       <h3>ครุภัณฑ์ที่ต้องติดตาม ${total} รายการ</h3>
-      <div class="sub">แตะที่การ์ดเพื่อเปิดรายละเอียดครุภัณฑ์ หรือแตะหัวข้อกลุ่มเพื่อดูทั้งหมด</div>
+      <div class="sub">รายการที่ไม่ได้อยู่ในสภาพพร้อมใช้ตามปกติ
+        แตะที่การ์ดเพื่อเปิดรายละเอียด หรือแตะดูทั้งหมดเพื่อไปยังรายการนั้น</div>
       ${groups.map(g=>`<div class="wgrp">
         <div class="hd"><b style="color:${g.col}">${esc(g.title)}</b>
           <span class="n" style="background:${g.bg};color:${g.col}">${g.n}</span>
@@ -1614,13 +1650,16 @@ function renderDash(){
   renderKpis(); renderLookup(); renderAlerts();
   const cm=checkMap(), of=openFixMap(), live=S.items.filter(ALIVE);
   const done=live.filter(i=>chk(cm,i)).length;
-  const bad=live.filter(i=>{const c=chk(cm,i);
-    return (c&&(c.result==='ชำรุด'||c.result==='ไม่พบ'))
-        || i.status==='ชำรุด' || i.status==='ไม่พบ';}).length;
+  /* นับจากสถานะปัจจุบันของทุกรายการ ไม่ตัดรายการที่แทงจำหน่ายออก
+     เพราะเดิมของที่ตรวจพบชำรุดแล้วถูกแทงจำหน่ายทีหลัง จะหายไปจากทุกช่อง */
+  const bad  = S.items.filter(i=>i.status==='ชำรุด'||i.status==='ไม่พบ').length;
+  const gone = S.items.filter(i=>i.status==='แทงจำหน่าย').length;
+  const goneNow = S.checks.filter(c=>c.result==='แทงจำหน่าย').length;
   const pct=live.length?Math.round(done/live.length*100):0;
 
   $('#dashSub').textContent=`รอบ ${thMonth(S.month)} · ต้องตรวจ ${live.length} รายการ `+
     `· เหลืออีก ${live.length-done} รายการ`+
+    (goneNow?` · รอบนี้แทงจำหน่าย ${goneNow} รายการ`:'')+
     (S.served?` · ข้อมูล ณ ${new Date(S.served).toLocaleTimeString('th-TH',
       {hour:'2-digit',minute:'2-digit'})} น.`:'');
   $('#heroTitle').textContent = pct===100
@@ -1852,6 +1891,7 @@ function matchList(){
     if(S.filter==='todo'&&(!ALIVE(i)||chk(cm,i))) return false;
     if(S.filter==='done'&&!chk(cm,i)) return false;
     if(S.filter==='broken'&&!(i.status==='ชำรุด'||i.status==='ไม่พบ')) return false;
+    if(S.filter==='disposed'&&i.status!=='แทงจำหน่าย') return false;
     if(S.filter==='fix'&&!of[ck(i)]) return false;
     if(S.filter==='loan'&&!openLoanMap()[ck(i)]) return false;
     if(S.filter==='old'){ const a=ageOf(i.recv); if(a===null||a<10) return false; }
