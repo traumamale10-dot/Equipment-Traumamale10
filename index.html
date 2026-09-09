@@ -645,6 +645,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <div class="card"><h3>สัดส่วนสถานะครุภัณฑ์</h3><div class="donut" id="byStatus"></div></div>
       <div class="card"><h3>แยกตามประเภท</h3><div id="byCat"></div></div>
       <div class="card"><h3>ชำรุด ไม่พบ และแทงจำหน่าย</h3><div id="byBad"></div></div>
+      <div class="card"><h3>การเบิกทดแทน</h3><div id="byRep"></div></div>
       <div class="card"><h3>ชื่นชมผู้ตรวจครบก่อน</h3><div class="honor" id="honor"></div></div>
       <div class="card"><h3>อายุการใช้งานครุภัณฑ์</h3><div id="byAge"></div></div>
       <div class="card"><h3>ค้างตรวจมากที่สุด</h3><div class="rank" id="topOwner"></div></div>
@@ -773,6 +774,26 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <button class="chip" data-fx="all">ทั้งหมด</button>
     </div>
     <div class="rows" id="fixList"></div>
+  </section>
+
+  <section class="view" id="v-dispose">
+    <h2 class="vt">ครุภัณฑ์แทงจำหน่าย</h2>
+    <p class="vs" id="dpSub">รายการที่จำหน่ายออกจากทะเบียนแล้ว ไม่ต้องตรวจสอบประจำเดือน
+      และไม่นับรวมในเปอร์เซ็นต์ความคืบหน้า</p>
+    <div class="tools">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="inp" id="dpQ" placeholder="ค้นชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือเลขที่หนังสือ"></label>
+      <button class="btn pri" onclick="openDispPick()">บันทึกแทงจำหน่ายใหม่</button>
+    </div>
+    <div class="chips" style="margin-bottom:16px">
+      <button class="chip on" data-dp="all">ทั้งหมด</button>
+      <button class="chip" data-dp="nodoc">ยังไม่แนบใบ</button>
+      <button class="chip" data-dp="noask">ยังไม่ขอเบิกทดแทน</button>
+      <button class="chip" data-dp="waiting">รอรับทดแทน</button>
+      <button class="chip" data-dp="done">ได้รับทดแทนแล้ว</button>
+    </div>
+    <div class="rows" id="dispList"></div>
   </section>
 
   <section class="view" id="v-sticker">
@@ -936,8 +957,8 @@ const S = {
   base: store.get('kp.base') || (location.origin + location.pathname),
   by: store.get('kp.by') || '',
   pin: '',
-  items:[], checks:[], fixes:[], loans:[], staff:[], roles:{}, ward:null, month:'',
-  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', shown:24, pickShown:36, ckShown:40,
+  items:[], checks:[], fixes:[], loans:[], disps:[], staff:[], roles:{}, ward:null, month:'',
+  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', dpTab:'all', shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}, served:''
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
@@ -1107,6 +1128,7 @@ const NAV=[
   ['check','ตรวจเช็ค','M20 6 9 17l-5-5'],
   ['loan','ยืม-คืน','M4 7h11l-3-3M20 17H9l3 3'],
   ['fix','ส่งซ่อม','M14.7 6.3a4 4 0 0 1-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2 2-2-2 2-2z'],
+  ['dispose','แทงจำหน่าย','M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6'],
   ['sticker','สติ๊กเกอร์','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM19 19h2v2h-2z'],
 ];
 /* หน้าตั้งค่าไม่แสดงในเมนู เข้าถึงได้สองทาง
@@ -1331,7 +1353,7 @@ async function reload(){
 }
 function apply(d){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
-  S.loans=d.loans||S.loans;
+  S.loans=d.loans||S.loans; S.disps=d.disps||S.disps;
   /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
   S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
   if(d.month) S.ckCache[d.month]=S.checks;
@@ -1412,7 +1434,9 @@ const stOf     = it => it._s || (it._s = nz(it.status));
 const isGone   = it => stOf(it)===ST.gone;
 const isBroken = it => stOf(it)===ST.broke || stOf(it)===ST.lost;
 const ALIVE = it => !isGone(it);
-function renderAll(){ renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); }
+function renderAll(){
+  renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); renderDisp();
+}
 
 /* ───── ครุภัณฑ์ที่ต้องติดตาม แสดงเป็นการ์ดพร้อมรูป ─────
    แสดงเฉพาะของที่ไม่ได้อยู่กับที่ คือถูกยืม ส่งซ่อม และรอซ่อมเวลาราชการ */
@@ -1780,6 +1804,30 @@ function renderDash(){
       `<b style="color:var(--bad)">${badNow}</b> รายการ · `+
       `แทงจำหน่าย <b>${goneNow}</b> รายการ</div>`;
 
+  /* ความคืบหน้าการเบิกทดแทนของที่แทงจำหน่ายไปแล้ว */
+  const dmap=dispMap();
+  const goneItems=S.items.filter(isGone);
+  const noRec=goneItems.filter(i=>!dmap[ck(i)]).length;
+  const cnt=r=>S.disps.filter(d=>d.rep===r).length;
+  const repRows=[
+    ['ยังไม่มีบันทึก', noRec, 'var(--bad)'],
+    ['ยังไม่ขอเบิก', cnt('ยังไม่ขอเบิก'), 'var(--warn)'],
+    ['ขอเบิกแล้ว รอรับ', cnt('ขอเบิกแล้ว'), 'var(--plum)'],
+    ['ได้รับทดแทนแล้ว', cnt('ได้รับทดแทนแล้ว'), 'var(--ok)'],
+    ['ไม่ขอทดแทน', cnt('ไม่ขอทดแทน'), 'var(--dim)']
+  ];
+  const repTot=Math.max(1, repRows.reduce((a,r)=>a+r[1],0));
+  const noFile=S.disps.filter(d=>!d.file).length + noRec;
+  $('#byRep').innerHTML = (goneItems.length||S.disps.length)
+    ? repRows.map(([lb,n,col])=>`<div style="margin-bottom:12px">
+        <div class="stat" style="border:0;padding:2px 0">
+          <span>${lb}</span><b style="color:${col}">${n}</b></div>
+        <div class="meter"><i style="width:${Math.round(n/repTot*100)}%;background:${col}"></i></div>
+      </div>`).join('')
+      + `<div class="note">ยังไม่แนบใบแทงจำหน่าย `+
+        `<b style="color:${noFile?'var(--bad)':'var(--ok)'}">${noFile}</b> รายการ</div>`
+    : '<div class="note">ยังไม่มีครุภัณฑ์ที่แทงจำหน่าย</div>';
+
   /* ชื่นชมผู้ที่ตรวจครบทุกรายการก่อน เรียงตามเวลาที่ตรวจเสร็จ */
   const byOwn={};
   live.forEach(i=>{
@@ -2047,6 +2095,9 @@ function openItem(k){
         <button class="btn pri" style="flex:1;justify-content:center" onclick="openEdit('${esc(k)}')">แก้ไขข้อมูล</button>
         <button class="btn" style="flex:1;justify-content:center" onclick="openFixForm('${esc(k)}')">แจ้งส่งซ่อม</button>
         <button class="btn" style="flex:1;justify-content:center" onclick="openLoanForm('${esc(k)}')">บันทึกการยืม</button>
+        <button class="btn" style="flex:1;justify-content:center"
+          onclick="openDispForm('${esc(i.cat)}','${esc(i.code)}')">${
+          isGone(i)?'ข้อมูลแทงจำหน่าย':'แทงจำหน่าย'}</button>
       </div>
       <h3 style="font-family:var(--f-d);font-size:15px;color:var(--plum);margin:0 0 14px">ประวัติส่งซ่อม</h3>
       ${fixes.length?`<div class="tl">${fixes.map(f=>`
@@ -3104,6 +3155,214 @@ async function uploadFixDoc(row,input){
   finally{ if(bar) bar.classList.remove('on'); input.value=''; }
 }
 
+/* ═════════ แทงจำหน่ายและการเบิกทดแทน ═════════ */
+const REP_STATES = ['ยังไม่ขอเบิก','ขอเบิกแล้ว','ได้รับทดแทนแล้ว','ไม่ขอทดแทน'];
+const repTag = r => r==='ได้รับทดแทนแล้ว' ? 't-ok'
+                  : r==='ขอเบิกแล้ว'     ? 't-fix'
+                  : r==='ไม่ขอทดแทน'     ? 't-off' : 't-warn';
+function dispMap(){
+  const m={}; S.disps.forEach(d=>{ m[d.cat+'|'+nk(d.code)]=d; }); return m;
+}
+
+$$('[data-dp]').forEach(b=>b.onclick=()=>{
+  $$('[data-dp]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); S.dpTab=b.dataset.dp; renderDisp();
+});
+$('#dpQ').addEventListener('input',renderDisp);
+
+function renderDisp(){
+  const q=$('#dpQ').value.trim().toLowerCase();
+  const dm=dispMap();
+
+  /* รวมสองแหล่ง คือรายการที่มีบันทึกแล้ว กับของที่สถานะเป็นแทงจำหน่ายแต่ยังไม่มีบันทึก */
+  const rows=[];
+  S.disps.forEach(d=>{
+    const it=S.items.find(i=>i.cat===d.cat && nk(i.code)===nk(d.code));
+    rows.push({d:d, it:it||{name:d.name,code:d.code,img:'',cat:d.cat}});
+  });
+  S.items.filter(i=>isGone(i) && !dm[ck(i)]).forEach(i=>rows.push({d:null, it:i}));
+
+  const noDoc=rows.filter(r=>!r.d||!r.d.file).length;
+  const noAsk=rows.filter(r=>!r.d||r.d.rep==='ยังไม่ขอเบิก').length;
+  const waiting=rows.filter(r=>r.d&&r.d.rep==='ขอเบิกแล้ว').length;
+  const done=rows.filter(r=>r.d&&r.d.rep==='ได้รับทดแทนแล้ว').length;
+
+  let list=rows;
+  if(S.dpTab==='nodoc')   list=rows.filter(r=>!r.d||!r.d.file);
+  if(S.dpTab==='noask')   list=rows.filter(r=>!r.d||r.d.rep==='ยังไม่ขอเบิก');
+  if(S.dpTab==='waiting') list=rows.filter(r=>r.d&&r.d.rep==='ขอเบิกแล้ว');
+  if(S.dpTab==='done')    list=rows.filter(r=>r.d&&r.d.rep==='ได้รับทดแทนแล้ว');
+  if(q) list=list.filter(r=>[r.it.name,r.it.code,r.d&&r.d.doc,r.d&&r.d.why]
+    .join(' ').toLowerCase().includes(q));
+
+  $('#dpSub').innerHTML=`แทงจำหน่ายแล้ว <b style="color:var(--plum)">${rows.length}</b> รายการ · `+
+    `ยังไม่แนบใบ <b style="color:var(--bad)">${noDoc}</b> · `+
+    `ยังไม่ขอเบิกทดแทน <b style="color:var(--warn)">${noAsk}</b> · `+
+    `รอรับ ${waiting} · ได้รับแล้ว ${done}<br>`+
+    `รายการเหล่านี้ไม่ต้องตรวจสอบประจำเดือน และไม่นับรวมในเปอร์เซ็นต์ความคืบหน้า`;
+
+  $('#dispList').innerHTML = list.length ? list.slice(0,120).map(r=>{
+    const u=imgUrl(r.it.img,180);
+    const d=r.d;
+    return `<button class="row" data-c="${esc(r.it.cat)}" data-x="${esc(r.it.code)}">
+      ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
+        :`<div class="thumb"></div>`}
+      <div class="mid"><b>${esc(r.it.name)}</b>
+        <span>${esc(r.it.code)}${d&&d.date?' · จำหน่าย '+esc(d.date):''}${
+          d&&d.doc?' · '+esc(d.doc):''}</span>
+        <span class="meta">
+          ${d&&d.file?'<em class="ok">แนบใบแล้ว</em>':'<em class="bad">ยังไม่แนบใบ</em>'}
+          <em class="${d?(d.rep==='ได้รับทดแทนแล้ว'?'ok':d.rep==='ยังไม่ขอเบิก'?'bad':'dim')
+            :'bad'}">${d?esc(d.rep):'ยังไม่มีบันทึก'}</em>
+          ${d&&d.repItem?`<em class="dim">ทดแทนด้วย ${esc(d.repItem)}</em>`:''}
+        </span></div>
+      <span class="tag ${d?repTag(d.rep):'t-bad'}">${d?esc(d.rep):'ต้องบันทึก'}</span></button>`;
+  }).join('')
+   : `<div class="empty"><b>ไม่มีรายการในหมวดนี้</b>
+       กดปุ่มบันทึกแทงจำหน่ายใหม่เพื่อเริ่มบันทึก</div>`;
+  $$('#dispList .row').forEach(el=>
+    el.onclick=()=>openDispForm(el.dataset.c, el.dataset.x));
+}
+
+/* เลือกครุภัณฑ์ที่จะแทงจำหน่าย */
+function openDispPick(){
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>เลือกครุภัณฑ์ที่จะแทงจำหน่าย</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="field"><label>ค้นหาครุภัณฑ์</label>
+        <input class="inp" id="dpPickQ" placeholder="พิมพ์ชื่อหรือเลขครุภัณฑ์" autofocus></div>
+      <div class="rows" id="dpPickList" style="max-height:52vh;overflow:auto"></div>
+    </div>`;
+  $('#dpPickQ').addEventListener('input',dpPickRender);
+  dpPickRender();
+  $('#scrim').classList.add('on');
+}
+function dpPickRender(){
+  const q=$('#dpPickQ').value.trim().toLowerCase();
+  const dm=dispMap();
+  const list=S.items.filter(i=>!dm[ck(i)] &&
+    (!q||[i.name,i.code,i.owner].join(' ').toLowerCase().includes(q))).slice(0,40);
+  $('#dpPickList').innerHTML=list.length?list.map(i=>`
+    <button class="row" data-k="${esc(key(i))}">
+      <div class="mid"><b>${esc(i.name)}</b>
+        <span>${esc(i.code)} · ${esc(i.owner||'—')}</span></div>
+      <span class="tag ${statusTag(i.status)}">${esc(i.status)}</span></button>`).join('')
+   :'<div class="note" style="padding:14px">ไม่พบครุภัณฑ์</div>';
+  $$('#dpPickList .row').forEach(el=>{
+    const it=findItem(el.dataset.k);
+    if(it) el.onclick=()=>openDispForm(it.cat,it.code);
+  });
+}
+
+function openDispForm(cat, code){
+  const it=S.items.find(i=>i.cat===cat && nk(i.code)===nk(code));
+  const d=dispMap()[cat+'|'+nk(code)] || null;
+  const shown=it||{name:(d&&d.name)||'',code:code,img:'',owner:'',loc:''};
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>${d?'แก้ไขข้อมูลแทงจำหน่าย':'บันทึกแทงจำหน่าย'}</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      ${idCard(shown, d&&d.date?'จำหน่ายเมื่อ '+esc(d.date):'')}
+
+      <div class="field"><label>วันที่แทงจำหน่าย</label>
+        <input class="inp" type="date" id="dpDate"
+               value="${d&&/^\d{4}-\d{2}-\d{2}$/.test(d.date)?d.date:today10()}"></div>
+      <div class="field"><label>เลขที่หนังสือ / คำสั่งจำหน่าย</label>
+        <input class="inp" id="dpDoc" value="${esc(d?d.doc:'')}"
+               placeholder="เช่น นม 0032.201/ว 123"></div>
+      <div class="field"><label>เหตุผลการจำหน่าย</label>
+        <textarea id="dpWhy" placeholder="เช่น ชำรุดเกินคุ้มค่าซ่อม หมดอายุการใช้งาน">${esc(d?d.why:'')}</textarea></div>
+      <div class="field"><label>ผู้บันทึก</label>
+        <select class="inp" id="dpBy">${staffOptions((d&&d.by)||S.by)}</select></div>
+
+      <div class="hr"></div>
+      <label style="display:block;font-size:14.5px;color:var(--dim);margin-bottom:9px;
+        font-family:var(--f-d)">ใบแทงจำหน่าย</label>
+      <label class="drop" style="margin-bottom:16px">
+        ${d&&d.file?`<img class="pv" src="${imgUrl(d.file,300)}" alt=""
+            onerror="this.outerHTML='<div class=\\'ph\\'>ใบ</div>'">`
+          :`<div class="ph">ใบ</div>`}
+        <div class="mid"><b>${d&&d.file?'เปลี่ยนรูปใบแทงจำหน่าย':'แนบรูปใบแทงจำหน่าย'}</b>
+          <span>${d?'ถ่ายใบแทงจำหน่ายเก็บไว้เป็นหลักฐานประกอบการตรวจสอบพัสดุ'
+                  :'บันทึกข้อมูลด้านบนก่อน แล้วจึงแนบไฟล์ได้'}</span>
+          <div class="bar-up" id="dpUpBar"><i></i></div></div>
+        <span class="act">${d?'เลือกไฟล์':'บันทึกก่อน'}</span>
+        <input type="file" accept="image/*" capture="environment" ${d?'':'disabled'}
+          onchange="uploadDispDoc(${d?d.row:0},this)"></label>
+      ${d&&d.file?`<div class="note" style="margin:-8px 0 16px">
+        <a href="https://drive.google.com/file/d/${d.file}/view" target="_blank"
+           rel="noopener">เปิดดูใบแทงจำหน่าย</a></div>`:''}
+
+      <div class="hr"></div>
+      <div class="field"><label>สถานะการเบิกทดแทน</label>
+        <div class="seg" id="dpRepSeg">${REP_STATES.map(v=>
+          `<button type="button" data-v="${v}" class="${
+            (d?d.rep:'ยังไม่ขอเบิก')===v?'on':''}">${v}</button>`).join('')}</div></div>
+      <div class="field"><label>วันที่ขอเบิก</label>
+        <input class="inp" type="date" id="dpAsk"
+               value="${d&&/^\d{4}-\d{2}-\d{2}$/.test(d.repAsk)?d.repAsk:''}"></div>
+      <div class="field"><label>เลขที่คำขอเบิก</label>
+        <input class="inp" id="dpRepDoc" value="${esc(d?d.repDoc:'')}"></div>
+      <div class="field"><label>วันที่ได้รับทดแทน</label>
+        <input class="inp" type="date" id="dpGot"
+               value="${d&&/^\d{4}-\d{2}-\d{2}$/.test(d.repGot)?d.repGot:''}"></div>
+      <div class="field"><label>ครุภัณฑ์ที่ได้รับทดแทน</label>
+        <input class="inp" id="dpRepItem" value="${esc(d?d.repItem:'')}"
+               placeholder="ชื่อและหมายเลขครุภัณฑ์ใหม่"></div>
+      <div class="field"><label>หมายเหตุ</label>
+        <textarea id="dpNote">${esc(d?d.note:'')}</textarea></div>
+
+      ${pinField()}
+      <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
+        onclick="submitDisp('${esc(cat)}','${esc(code)}',${d?d.row:0},${it?it.row:0})">
+        ${d?'บันทึกการแก้ไข':'บันทึกแทงจำหน่าย'}</button>
+    </div>`;
+  let rep=(d?d.rep:'ยังไม่ขอเบิก');
+  $$('#dpRepSeg button').forEach(b=>b.onclick=()=>{
+    $$('#dpRepSeg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); rep=b.dataset.v;
+  });
+  window._dpRep=()=>rep;
+  $('#scrim').classList.add('on');
+}
+
+async function submitDisp(cat, code, row, itemRow){
+  if(!grabPin()) return;
+  const it=S.items.find(i=>i.cat===cat && nk(i.code)===nk(code));
+  try{
+    const d=await api('saveDispose',{
+      cat, code, row, itemRow, name:it?it.name:'',
+      date:$('#dpDate').value, doc:$('#dpDoc').value.trim(),
+      why:$('#dpWhy').value.trim(), by:$('#dpBy').value.trim(),
+      rep:window._dpRep?window._dpRep():'ยังไม่ขอเบิก',
+      repAsk:$('#dpAsk').value, repDoc:$('#dpRepDoc').value.trim(),
+      repGot:$('#dpGot').value, repItem:$('#dpRepItem').value.trim(),
+      note:$('#dpNote').value.trim()});
+    S.disps=d.disps||S.disps;
+    if(it) it.status='แทงจำหน่าย', it._s=nz('แทงจำหน่าย');
+    closeSheet(); renderAll(); go('dispose');
+    toast('บันทึกข้อมูลแทงจำหน่ายแล้ว','good');
+  }catch(e){ toast(e.message,'bad'); }
+}
+
+async function uploadDispDoc(row,input){
+  const f=input.files&&input.files[0];
+  if(!f||!row) return;
+  if(!grabPin()){ input.value=''; return; }
+  const bar=$('#dpUpBar'); if(bar) bar.classList.add('on');
+  try{
+    const data=await fileToJpeg(f,1800,.85);
+    const d=await apiPost('uploadDispDoc',{row,data,mime:'image/jpeg'});
+    S.disps=d.disps||S.disps;
+    const rec=S.disps.find(x=>x.row===row);
+    renderAll();
+    if(rec) openDispForm(rec.cat, rec.code);
+    toast('อัปโหลดใบแทงจำหน่ายแล้ว','good');
+  }catch(e){ toast('อัปโหลดไม่สำเร็จ: '+e.message,'bad'); }
+  finally{ if(bar) bar.classList.remove('on'); input.value=''; }
+}
+
 /* ═════════ ยืม-คืนครุภัณฑ์ ═════════ */
 /* แถบยืนยันว่าเป็นครุภัณฑ์ชิ้นที่ต้องการจริง */
 function idCard(i,extra){
@@ -3276,7 +3535,7 @@ async function submitLoan(k){
       place:$('#lnPlace').value.trim(), tel:$('#lnTel').value.trim(),
       out:$('#lnOut').value, due:($('#lnDue').disabled?'':$('#lnDue').value),
       why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim()});
-    S.loans=d.loans||S.loans;
+    S.loans=d.loans||S.loans; S.disps=d.disps||S.disps;
   /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
   S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
   if(d.month) S.ckCache[d.month]=S.checks;
@@ -3341,7 +3600,7 @@ async function submitReturn(row,cat,itemRow){
       back:$('#lnBack').value, cond:window._lnCond?window._lnCond():'ปกติ',
       loc:$('#lnLoc').value.trim(),
       got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim()});
-    S.loans=d.loans||S.loans;
+    S.loans=d.loans||S.loans; S.disps=d.disps||S.disps;
   /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
   S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
   if(d.month) S.ckCache[d.month]=S.checks;
