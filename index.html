@@ -1058,6 +1058,24 @@ function iconFor(n){
 /* ═════════ ตัวช่วย ═════════ */
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
+/* ───── ค่าคงที่และตัวช่วยที่ใช้ร่วมกันหลายหน้า ─────
+   ประกาศไว้บนสุดเพื่อไม่ให้ถูกอ้างถึงก่อนกำหนดค่า                        */
+
+/* ข้อความไทยที่ดูเหมือนกันอาจใช้รหัสอักขระต่างกัน เช่น ชำ กับ ชํา
+   จึงต้องทำให้เป็นรูปแบบมาตรฐานก่อนเทียบทุกครั้ง */
+const nz = v => String(v==null?'':v).normalize('NFKC').replace(/\s+/g,'').trim();
+const ST = { alive:nz('มีของ'), gone:nz('แทงจำหน่าย'), broke:nz('ชำรุด'),
+             lost:nz('ไม่พบ'), lend:nz('ถูกยืม'), fix:nz('ส่งซ่อม'), wait:nz('รอซ่อม') };
+const stOf     = it => it._s || (it._s = nz(it.status));
+const isGone   = it => stOf(it)===ST.gone;
+const isBroken = it => stOf(it)===ST.broke || stOf(it)===ST.lost;
+
+const today10 = () => new Date().toISOString().slice(0,10);
+const FIX_OPEN = f => f.state!=='ซ่อมเสร็จ' && f.state!=='ซ่อมไม่ได้';
+const FIX_TAG  = f => f.state==='ซ่อมเสร็จ' ? 't-ok'
+                    : f.state==='ซ่อมไม่ได้' ? 't-bad'
+                    : f.state==='รอซ่อมเวลาราชการ' ? 't-warn' : 't-fix';
+
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key = it => it.cat + '|' + it.code;
@@ -1480,14 +1498,6 @@ function openFixMap(){
   S.fixes.forEach(f=>{ if(f.state!=='ซ่อมเสร็จ'&&f.state!=='ซ่อมไม่ได้') m[f.cat+'|'+nk(f.code)]=f; });
   return m;
 }
-/* ข้อความไทยที่ดูเหมือนกันอาจใช้รหัสอักขระต่างกัน เช่น ชำ กับ ชํา
-   จึงต้องทำให้เป็นรูปแบบมาตรฐานก่อนเทียบทุกครั้ง */
-const nz = v => String(v==null?'':v).normalize('NFKC').replace(/\s+/g,'').trim();
-const ST = { alive:nz('มีของ'), gone:nz('แทงจำหน่าย'), broke:nz('ชำรุด'),
-             lost:nz('ไม่พบ'), lend:nz('ถูกยืม'), fix:nz('ส่งซ่อม'), wait:nz('รอซ่อม') };
-const stOf     = it => it._s || (it._s = nz(it.status));
-const isGone   = it => stOf(it)===ST.gone;
-const isBroken = it => stOf(it)===ST.broke || stOf(it)===ST.lost;
 const ALIVE = it => !isGone(it);
 function renderAll(){
   renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); renderDisp();
@@ -3514,7 +3524,6 @@ function idCard(i,extra){
     </div></div>`;
 }
 
-const today10 = () => new Date().toISOString().slice(0,10);
 function openLoanMap(){
   const m={};
   S.loans.forEach(l=>{ if(l.state!=='คืนแล้ว') m[l.cat+'|'+nk(l.code)]=l; });
@@ -3760,11 +3769,6 @@ async function submitReturn(row,cat,itemRow){
 /* ═════════ ส่งซ่อม ═════════ */
 $('#fxSel').onchange=e=>{ S.fxTab=e.target.value; renderFix(); };
 $('#fxQ').addEventListener('input',renderFix);
-
-const FIX_OPEN = f => f.state!=='ซ่อมเสร็จ' && f.state!=='ซ่อมไม่ได้';
-const FIX_TAG  = f => f.state==='ซ่อมเสร็จ' ? 't-ok'
-                    : f.state==='ซ่อมไม่ได้' ? 't-bad'
-                    : f.state==='รอซ่อมเวลาราชการ' ? 't-warn' : 't-fix';
 
 function renderFix(){
   const q=$('#fxQ').value.trim().toLowerCase();
