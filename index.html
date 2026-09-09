@@ -500,6 +500,15 @@ select.inp{appearance:none;padding-right:38px;
 .wmore{grid-column:1/-1;justify-content:center;padding:12px}
 
 /* ══════════ ชื่นชมผู้ตรวจครบ ══════════ */
+/* แถบสรุปเล็กประจำหน้า คำนวณจากข้อมูลที่โหลดมาแล้ว ไม่ต้องดึงใหม่ */
+.mstat{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:10px;
+  margin-bottom:16px}
+.mstat button{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;
+  padding:11px 14px;text-align:left;box-shadow:var(--sh);transition:.16s;cursor:pointer}
+.mstat button:hover{border-color:var(--lav);transform:translateY(-2px);box-shadow:var(--sh2)}
+.mstat b{display:block;font-family:var(--f-d);font-weight:600;font-size:23px;line-height:1.2}
+.mstat span{font-size:12.5px;color:var(--dim)}
+
 .honor{display:grid;gap:9px}
 .honor .h{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:13px;
   background:var(--surface2);border:1.5px solid var(--line);transition:.16s}
@@ -743,6 +752,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input class="inp" id="lnQ" placeholder="กรองรายการยืมด้วยชื่อครุภัณฑ์หรือผู้ยืม"></label>
     </div>
+    <div class="mstat" id="lnStat"></div>
     <div class="chips" style="margin-bottom:16px">
       <button class="chip on" data-ln="out">กำลังยืม</button>
       <button class="chip" data-ln="over">ต้องติดตาม</button>
@@ -768,6 +778,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input class="inp" id="fxQ" placeholder="กรองรายการซ่อมด้วยชื่อครุภัณฑ์หรืออาการ"></label>
     </div>
+    <div class="mstat" id="fxStat"></div>
     <div class="chips" style="margin-bottom:18px">
       <button class="chip on" data-fx="open">ยังไม่ปิดงาน</button>
       <button class="chip" data-fx="wait">รอซ่อมเวลาราชการ</button>
@@ -786,6 +797,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <input class="inp" id="dpQ" placeholder="ค้นชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือเลขที่หนังสือ"></label>
       <button class="btn pri" onclick="openDispPick()">บันทึกแทงจำหน่ายใหม่</button>
     </div>
+    <div class="mstat" id="dpStat"></div>
     <div class="chips" style="margin-bottom:16px">
       <button class="chip on" data-dp="all">ทั้งหมด</button>
       <button class="chip" data-dp="nodoc">ยังไม่แนบใบ</button>
@@ -3155,6 +3167,23 @@ async function uploadFixDoc(row,input){
   finally{ if(bar) bar.classList.remove('on'); input.value=''; }
 }
 
+/* ───── แถบสรุปประจำหน้า ─────
+   ใช้ข้อมูลที่โหลดมาแล้วทั้งหมด คำนวณในเครื่อง จึงไม่มีการเรียกเซิร์ฟเวอร์เพิ่ม
+   ตัวเลขที่ระบุว่า "รอบนี้" จะเปลี่ยนตามเดือนที่เลือกบนหัวจอ                    */
+function inMonth(dateStr, mk){
+  const m=String(dateStr||'').match(/(\d{4})-(\d{2})/);
+  return !!(m && (m[1]+'-'+m[2])===mk);
+}
+function mstat(el, rows){
+  const box=$(el); if(!box) return;
+  box.innerHTML=rows.map((r,i)=>
+    `<button data-i="${i}"><b style="color:${r[2]}">${r[1]}</b><span>${r[0]}</span></button>`
+  ).join('');
+  $$(el+' button').forEach(b=>{
+    const r=rows[+b.dataset.i];
+    if(r && r[3]) b.onclick=r[3]; else b.style.cursor='default';
+  });
+}
 /* ═════════ แทงจำหน่ายและการเบิกทดแทน ═════════ */
 const REP_STATES = ['ยังไม่ขอเบิก','ขอเบิกแล้ว','ได้รับทดแทนแล้ว','ไม่ขอทดแทน'];
 const repTag = r => r==='ได้รับทดแทนแล้ว' ? 't-ok'
@@ -3195,7 +3224,24 @@ function renderDisp(){
   if(q) list=list.filter(r=>[r.it.name,r.it.code,r.d&&r.d.doc,r.d&&r.d.why]
     .join(' ').toLowerCase().includes(q));
 
-  $('#dpSub').innerHTML=`แทงจำหน่ายแล้ว <b style="color:var(--plum)">${rows.length}</b> รายการ · `+
+  const mkD=S.month;
+  mstat('#dpStat',[
+    ['จำหน่ายรอบนี้', S.disps.filter(x=>inMonth(x.date,mkD)).length, 'var(--plum)', null],
+    ['ยังไม่แนบเอกสาร', noDoc, 'var(--bad)',
+      ()=>{S.dpTab='nodoc';$$('[data-dp]').forEach(x=>
+        x.classList.toggle('on',x.dataset.dp==='nodoc'));renderDisp();}],
+    ['ยังไม่ขอเบิก', noAsk, 'var(--warn)',
+      ()=>{S.dpTab='noask';$$('[data-dp]').forEach(x=>
+        x.classList.toggle('on',x.dataset.dp==='noask'));renderDisp();}],
+    ['รอรับทดแทน', waiting, 'var(--plum)',
+      ()=>{S.dpTab='waiting';$$('[data-dp]').forEach(x=>
+        x.classList.toggle('on',x.dataset.dp==='waiting'));renderDisp();}],
+    ['ได้รับทดแทนแล้ว', done, 'var(--ok)',
+      ()=>{S.dpTab='done';$$('[data-dp]').forEach(x=>
+        x.classList.toggle('on',x.dataset.dp==='done'));renderDisp();}]
+  ]);
+
+  $('#dpSub').innerHTML=`แทงจำหน่ายแล้วทั้งหมด <b style="color:var(--plum)">${rows.length}</b> รายการ · `+
     `ยังไม่แนบใบ <b style="color:var(--bad)">${noDoc}</b> · `+
     `ยังไม่ขอเบิกทดแทน <b style="color:var(--warn)">${noAsk}</b> · `+
     `รอรับ ${waiting} · ได้รับแล้ว ${done}<br>`+
@@ -3211,7 +3257,8 @@ function renderDisp(){
         <span>${esc(r.it.code)}${d&&d.date?' · จำหน่าย '+esc(d.date):''}${
           d&&d.doc?' · '+esc(d.doc):''}</span>
         <span class="meta">
-          ${d&&d.file?'<em class="ok">แนบใบแล้ว</em>':'<em class="bad">ยังไม่แนบใบ</em>'}
+          ${d&&d.file?`<em class="ok">แนบ${esc(d.docType||'ใบแทงจำหน่าย')}แล้ว</em>`
+                     :'<em class="bad">ยังไม่แนบเอกสาร</em>'}
           <em class="${d?(d.rep==='ได้รับทดแทนแล้ว'?'ok':d.rep==='ยังไม่ขอเบิก'?'bad':'dim')
             :'bad'}">${d?esc(d.rep):'ยังไม่มีบันทึก'}</em>
           ${d&&d.repItem?`<em class="dim">ทดแทนด้วย ${esc(d.repItem)}</em>`:''}
@@ -3258,6 +3305,19 @@ function dpPickRender(){
 function openDispForm(cat, code){
   const it=S.items.find(i=>i.cat===cat && nk(i.code)===nk(code));
   const d=dispMap()[cat+'|'+nk(code)] || null;
+
+  /* ถ้าครุภัณฑ์ชิ้นนี้เคยส่งซ่อมและมีใบส่งซ่อมแนบไว้ ให้ดึงมาใช้เป็นหลักฐานได้เลย */
+  const fx=S.fixes.filter(f=>f.cat===cat && nk(f.code)===nk(code) && f.file)
+                  .sort((a,b)=>String(b.at).localeCompare(String(a.at)))[0];
+  const fixDocBtn = (fx && d && (!d.file || d.file!==fx.file))
+    ? `<div class="note" style="margin-bottom:14px;padding:12px 14px;border-radius:13px;
+         background:var(--lav-soft);border:1.5px solid var(--line2)">
+        พบใบส่งซ่อมของครุภัณฑ์ชิ้นนี้${fx.state==='ซ่อมไม่ได้'
+          ?' <b style="color:var(--bad)">ผลการซ่อมคือซ่อมไม่ได้</b>':''}
+        <button class="btn" style="margin-top:9px;width:100%;justify-content:center"
+          onclick="useFixDoc('${esc(cat)}','${esc(code)}',${d.row},'${esc(fx.file)}')">
+          ใช้ใบส่งซ่อมนี้เป็นเอกสารแนบ</button></div>`
+    : '';
   const shown=it||{name:(d&&d.name)||'',code:code,img:'',owner:'',loc:''};
   $('#sheet').innerHTML=`
     <div class="hd"><h4>${d?'แก้ไขข้อมูลแทงจำหน่าย':'บันทึกแทงจำหน่าย'}</h4>
@@ -3277,8 +3337,15 @@ function openDispForm(cat, code){
         <select class="inp" id="dpBy">${staffOptions((d&&d.by)||S.by)}</select></div>
 
       <div class="hr"></div>
+      <div class="field"><label>ประเภทเอกสารแนบ</label>
+        <div class="seg" id="dpTypeSeg">${['ใบแทงจำหน่าย','ใบส่งซ่อม'].map(v=>
+          `<button type="button" data-v="${v}" class="${
+            (d&&d.docType?d.docType:'ใบแทงจำหน่าย')===v?'on':''}">${v}</button>`).join('')}</div>
+        <div class="note" style="margin-top:6px">กรณีส่งซ่อมแล้วซ่อมไม่ได้
+          ใช้ใบส่งซ่อมเป็นหลักฐานแทนได้</div></div>
+      ${fixDocBtn}
       <label style="display:block;font-size:14.5px;color:var(--dim);margin-bottom:9px;
-        font-family:var(--f-d)">ใบแทงจำหน่าย</label>
+        font-family:var(--f-d)">เอกสารแนบ</label>
       <label class="drop" style="margin-bottom:16px">
         ${d&&d.file?`<img class="pv" src="${imgUrl(d.file,300)}" alt=""
             onerror="this.outerHTML='<div class=\\'ph\\'>ใบ</div>'">`
@@ -3292,7 +3359,7 @@ function openDispForm(cat, code){
           onchange="uploadDispDoc(${d?d.row:0},this)"></label>
       ${d&&d.file?`<div class="note" style="margin:-8px 0 16px">
         <a href="https://drive.google.com/file/d/${d.file}/view" target="_blank"
-           rel="noopener">เปิดดูใบแทงจำหน่าย</a></div>`:''}
+           rel="noopener">เปิดดู${esc(d.docType||'ใบแทงจำหน่าย')}</a></div>`:''}
 
       <div class="hr"></div>
       <div class="field"><label>สถานะการเบิกทดแทน</label>
@@ -3324,6 +3391,12 @@ function openDispForm(cat, code){
     b.classList.add('on'); rep=b.dataset.v;
   });
   window._dpRep=()=>rep;
+  let dtype=(d&&d.docType)||'ใบแทงจำหน่าย';
+  $$('#dpTypeSeg button').forEach(b=>b.onclick=()=>{
+    $$('#dpTypeSeg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); dtype=b.dataset.v;
+  });
+  window._dpType=()=>dtype;
   $('#scrim').classList.add('on');
 }
 
@@ -3338,11 +3411,23 @@ async function submitDisp(cat, code, row, itemRow){
       rep:window._dpRep?window._dpRep():'ยังไม่ขอเบิก',
       repAsk:$('#dpAsk').value, repDoc:$('#dpRepDoc').value.trim(),
       repGot:$('#dpGot').value, repItem:$('#dpRepItem').value.trim(),
+      docType:window._dpType?window._dpType():'ใบแทงจำหน่าย',
       note:$('#dpNote').value.trim()});
     S.disps=d.disps||S.disps;
     if(it) it.status='แทงจำหน่าย', it._s=nz('แทงจำหน่าย');
     closeSheet(); renderAll(); go('dispose');
     toast('บันทึกข้อมูลแทงจำหน่ายแล้ว','good');
+  }catch(e){ toast(e.message,'bad'); }
+}
+
+/* ใช้ไฟล์ใบส่งซ่อมที่มีอยู่แล้ว เป็นเอกสารแนบของการแทงจำหน่าย */
+async function useFixDoc(cat, code, row, fileId){
+  if(!grabPin()) return;
+  try{
+    const d=await api('saveDispose',{cat,code,row,file:fileId,docType:'ใบส่งซ่อม'});
+    S.disps=d.disps||S.disps;
+    renderAll(); openDispForm(cat,code);
+    toast('ใช้ใบส่งซ่อมเป็นเอกสารแนบแล้ว','good');
   }catch(e){ toast(e.message,'bad'); }
 }
 
@@ -3353,7 +3438,8 @@ async function uploadDispDoc(row,input){
   const bar=$('#dpUpBar'); if(bar) bar.classList.add('on');
   try{
     const data=await fileToJpeg(f,1800,.85);
-    const d=await apiPost('uploadDispDoc',{row,data,mime:'image/jpeg'});
+    const d=await apiPost('uploadDispDoc',{row,data,mime:'image/jpeg',
+      docType:window._dpType?window._dpType():'ใบแทงจำหน่าย'});
     S.disps=d.disps||S.disps;
     const rec=S.disps.find(x=>x.row===row);
     renderAll();
@@ -3409,7 +3495,25 @@ function renderLoan(){
            : S.lnTab==='all'  ? S.loans.slice().reverse() : out;
   if(q) list=list.filter(l=>[l.name,l.code,l.who,l.place].join(' ').toLowerCase().includes(q));
 
-  $('#loanSub').innerHTML=`กำลังยืมอยู่ <b style="color:var(--plum)">${out.length}</b> รายการ`+
+  const mk=S.month;
+  mstat('#lnStat',[
+    ['ยืมออกรอบนี้', S.loans.filter(l=>inMonth(l.out,mk)).length, 'var(--plum)',
+      ()=>{S.lnTab='all';$$('[data-ln]').forEach(x=>
+        x.classList.toggle('on',x.dataset.ln==='all'));renderLoan();}],
+    ['คืนแล้วรอบนี้', S.loans.filter(l=>l.state==='คืนแล้ว'&&inMonth(l.back,mk)).length,
+      'var(--ok)', null],
+    ['กำลังยืมอยู่', out.length, 'var(--warn)',
+      ()=>{S.lnTab='out';$$('[data-ln]').forEach(x=>
+        x.classList.toggle('on',x.dataset.ln==='out'));renderLoan();}],
+    ['ต้องติดตาม', over.length, 'var(--bad)',
+      ()=>{S.lnTab='over';$$('[data-ln]').forEach(x=>
+        x.classList.toggle('on',x.dataset.ln==='over'));renderLoan();}],
+    ['ยืมทั้งหมด', S.loans.length, 'var(--dim)',
+      ()=>{S.lnTab='all';$$('[data-ln]').forEach(x=>
+        x.classList.toggle('on',x.dataset.ln==='all'));renderLoan();}]
+  ]);
+
+  $('#loanSub').innerHTML=`รอบ ${thMonth(mk)} · กำลังยืมอยู่ <b style="color:var(--plum)">${out.length}</b> รายการ`+
     (over.length?` · <b style="color:var(--bad)">ต้องติดตาม ${over.length} รายการ</b>`:'')+
     ' · บันทึกการยืมออกและติดตามจนได้รับคืน';
 
@@ -3628,7 +3732,25 @@ function renderFix(){
            : S.fxTab==='all'  ? S.fixes.slice().reverse() : open;
   if(q) list=list.filter(f=>[f.name,f.code,f.issue,f.to].join(' ').toLowerCase().includes(q));
 
-  $('#fixSub').innerHTML=`ยังไม่ปิดงาน <b style="color:var(--plum)">${open.length}</b> รายการ`+
+  const mkF=S.month;
+  const closed=S.fixes.filter(f=>!FIX_OPEN(f));
+  mstat('#fxStat',[
+    ['แจ้งซ่อมรอบนี้', S.fixes.filter(f=>inMonth(f.sent,mkF)).length, 'var(--plum)',
+      ()=>{S.fxTab='all';$$('[data-fx]').forEach(x=>
+        x.classList.toggle('on',x.dataset.fx==='all'));renderFix();}],
+    ['ปิดงานรอบนี้', closed.filter(f=>inMonth(f.back,mkF)).length, 'var(--ok)', null],
+    ['กำลังซ่อม', open.filter(f=>f.state!=='รอซ่อมเวลาราชการ').length, 'var(--plum)',
+      ()=>{S.fxTab='open';$$('[data-fx]').forEach(x=>
+        x.classList.toggle('on',x.dataset.fx==='open'));renderFix();}],
+    ['รอซ่อมเวลาราชการ', wait.length, 'var(--warn)',
+      ()=>{S.fxTab='wait';$$('[data-fx]').forEach(x=>
+        x.classList.toggle('on',x.dataset.fx==='wait'));renderFix();}],
+    ['ซ่อมไม่ได้', S.fixes.filter(f=>f.state==='ซ่อมไม่ได้').length, 'var(--bad)',
+      ()=>{S.fxTab='all';$$('[data-fx]').forEach(x=>
+        x.classList.toggle('on',x.dataset.fx==='all'));renderFix();}]
+  ]);
+
+  $('#fixSub').innerHTML=`รอบ ${thMonth(mkF)} · ยังไม่ปิดงาน <b style="color:var(--plum)">${open.length}</b> รายการ`+
     (wait.length?` · <b style="color:var(--warn)">รอซ่อมเวลาราชการ ${wait.length} รายการ</b>`:'')+
     ' · บันทึกการส่งซ่อมและติดตามจนรับเครื่องคืน';
 
