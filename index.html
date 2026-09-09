@@ -932,6 +932,8 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <div class="tools"><button class="btn" onclick="go('dash')">กลับหน้าภาพรวม</button></div>
     <div class="card" style="max-width:680px">
       <h3>การเชื่อมต่อ</h3>
+      <div class="note" style="margin-bottom:14px">เวอร์ชันหน้าเว็บที่โหลดอยู่
+        <b style="color:var(--plum)" id="verTxt"></b></div>
       <div class="field"><label>URL ของ Web App (/exec)</label><input class="inp" id="setUrl"></div>
       <div class="field"><label>ลิงก์ที่ฝังใน QR</label><input class="inp" id="setBase"></div>
       <div class="field"><label>ชื่อผู้ใช้เครื่องนี้</label>
@@ -1000,6 +1002,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
+const APP_VERSION = '2026-09-08 · v12';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -4433,6 +4436,13 @@ function buildStickers(){
 }
 
 /* ═════════ เริ่ม ═════════ */
+/* แสดงเวอร์ชันไว้ที่หัวจอ กันสับสนเวลาเบราว์เซอร์ยังใช้ไฟล์เก่าที่จำไว้ */
+(function(){
+  const el=$('#brandSub');
+  if(el) el.title='เวอร์ชัน '+APP_VERSION;
+  const v=$('#verTxt'); if(v) v.textContent=APP_VERSION;
+  console.log('คลังครุภัณฑ์ · เวอร์ชัน '+APP_VERSION);
+})();
 bindSetupGate();
 $('#dName').addEventListener('change',renderLookup);
 $('#dOwner').addEventListener('change',renderLookup);
