@@ -229,6 +229,9 @@ select.inp{appearance:none;padding-right:38px;
 .btn.pri:hover{color:#fff;filter:brightness(1.08)}
 .btn.go{background:var(--ok);border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(31,138,99,.24)}
 .btn.go:hover{color:#fff;filter:brightness(1.07)}
+.pickwrap{display:flex;align-items:center;gap:9px}
+.pickwrap>span{font-size:14.5px;color:var(--dim);font-family:var(--f-d);white-space:nowrap}
+.pickwrap>select{min-width:210px}
 .chips{display:flex;gap:9px;flex-wrap:wrap}
 .chip{padding:9px 18px;border-radius:99px;border:1.5px solid var(--line2);background:var(--surface);
   font-size:15px;color:var(--dim);transition:.16s;font-family:var(--f-d);font-weight:500}
@@ -456,6 +459,8 @@ select.inp{appearance:none;padding-right:38px;
   .kv{grid-template-columns:96px 1fr;font-size:15px}
   .sheet{max-height:90vh}
   .btn{padding:11px 17px;font-size:15px}
+  .pickwrap{flex:1 1 100%}
+  .pickwrap>select{flex:1;min-width:0}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
@@ -506,8 +511,18 @@ select.inp{appearance:none;padding-right:38px;
 .mstat button{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;
   padding:11px 14px;text-align:left;box-shadow:var(--sh);transition:.16s;cursor:pointer}
 .mstat button:hover{border-color:var(--lav);transform:translateY(-2px);box-shadow:var(--sh2)}
+.mstat button.on{border-color:var(--plum);background:var(--lav-soft);
+  box-shadow:0 0 0 3px rgba(107,63,160,.13)}
 .mstat b{display:block;font-family:var(--f-d);font-weight:600;font-size:23px;line-height:1.2}
 .mstat span{font-size:12.5px;color:var(--dim)}
+.mstat button.on{border-color:var(--plum);box-shadow:0 0 0 3px rgba(107,63,160,.13)}
+.scope{display:flex;align-items:center;gap:10px;background:var(--lav-soft);
+  border:1.5px solid var(--line2);border-radius:13px;padding:9px 14px;margin-bottom:14px;
+  font-size:14.5px}
+.scope b{font-family:var(--f-d);font-weight:600;color:var(--plum)}
+.scope button{margin-left:auto;background:var(--surface);border:1.5px solid var(--line2);
+  border-radius:10px;padding:5px 13px;font-size:13.5px;font-family:var(--f-d);color:var(--ink2)}
+.scope button:hover{border-color:var(--lav);color:var(--plum)}
 
 .honor{display:grid;gap:9px}
 .honor .h{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:13px;
@@ -668,6 +683,14 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <h2 class="vt">ทะเบียนครุภัณฑ์</h2>
     <p class="vs" id="stockSub">—</p>
     <div class="tools">
+      <button class="btn pri" onclick="openScan('item')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>
+          <path d="M7 12h10"/></svg>สแกน QR ดูข้อมูล</button>
+      <input class="inp" id="stCode" placeholder="หรือพิมพ์เลขครุภัณฑ์" style="flex:1;min-width:180px">
+      <button class="btn" onclick="itemByCode(stCode.value)">เปิดดู</button>
+    </div>
+    <div class="tools">
       <label class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input class="inp" id="q" placeholder="ค้นชื่อ เลขครุภัณฑ์ ผู้รับผิดชอบ จุดวาง"></label>
@@ -728,9 +751,12 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <div class="field" style="margin:16px 0 0"><label>ผู้ตรวจ</label>
         <select class="inp" id="inspector" style="max-width:360px"></select></div>
     </div>
-    <div class="chips" style="margin-bottom:16px">
-      <button class="chip on" data-ck="todo">ค้างตรวจ</button>
-      <button class="chip" data-ck="done">ตรวจแล้ว</button>
+    <div class="tools" style="margin-bottom:16px">
+      <label class="pickwrap"><span>แสดงรายการ</span>
+        <select class="inp" id="ckSel">
+          <option value="todo">ค้างตรวจ</option>
+          <option value="done">ตรวจแล้ว</option>
+        </select></label>
     </div>
     <div class="rows" id="checkList"></div>
   </section>
@@ -753,10 +779,15 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <input class="inp" id="lnQ" placeholder="กรองรายการยืมด้วยชื่อครุภัณฑ์หรือผู้ยืม"></label>
     </div>
     <div class="mstat" id="lnStat"></div>
-    <div class="chips" style="margin-bottom:16px">
-      <button class="chip on" data-ln="out">กำลังยืม</button>
-      <button class="chip" data-ln="over">ต้องติดตาม</button>
-      <button class="chip" data-ln="all">ทั้งหมด</button>
+    <div class="tools" style="margin-bottom:16px">
+      <label class="pickwrap"><span>แสดงรายการ</span>
+        <select class="inp" id="lnSel">
+          <option value="out">กำลังยืมอยู่</option>
+          <option value="over">ต้องติดตาม</option>
+          <option value="mOut">ยืมออกในรอบนี้</option>
+          <option value="mBack">คืนแล้วในรอบนี้</option>
+          <option value="all">ทั้งหมด</option>
+        </select></label>
     </div>
     <div class="rows" id="loanList"></div>
   </section>
@@ -779,10 +810,17 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <input class="inp" id="fxQ" placeholder="กรองรายการซ่อมด้วยชื่อครุภัณฑ์หรืออาการ"></label>
     </div>
     <div class="mstat" id="fxStat"></div>
-    <div class="chips" style="margin-bottom:18px">
-      <button class="chip on" data-fx="open">ยังไม่ปิดงาน</button>
-      <button class="chip" data-fx="wait">รอซ่อมเวลาราชการ</button>
-      <button class="chip" data-fx="all">ทั้งหมด</button>
+    <div class="tools" style="margin-bottom:18px">
+      <label class="pickwrap"><span>แสดงรายการ</span>
+        <select class="inp" id="fxSel">
+          <option value="open">ยังไม่ปิดงาน</option>
+          <option value="doing">กำลังซ่อม</option>
+          <option value="wait">รอซ่อมเวลาราชการ</option>
+          <option value="mSent">แจ้งซ่อมในรอบนี้</option>
+          <option value="mBack">ปิดงานในรอบนี้</option>
+          <option value="cant">ซ่อมไม่ได้</option>
+          <option value="all">ทั้งหมด</option>
+        </select></label>
     </div>
     <div class="rows" id="fixList"></div>
   </section>
@@ -798,12 +836,16 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <button class="btn pri" onclick="openDispPick()">บันทึกแทงจำหน่ายใหม่</button>
     </div>
     <div class="mstat" id="dpStat"></div>
-    <div class="chips" style="margin-bottom:16px">
-      <button class="chip on" data-dp="all">ทั้งหมด</button>
-      <button class="chip" data-dp="nodoc">ยังไม่แนบใบ</button>
-      <button class="chip" data-dp="noask">ยังไม่ขอเบิกทดแทน</button>
-      <button class="chip" data-dp="waiting">รอรับทดแทน</button>
-      <button class="chip" data-dp="done">ได้รับทดแทนแล้ว</button>
+    <div class="tools" style="margin-bottom:16px">
+      <label class="pickwrap"><span>แสดงรายการ</span>
+        <select class="inp" id="dpSel">
+          <option value="all">ทั้งหมด</option>
+          <option value="month">จำหน่ายในรอบนี้</option>
+          <option value="nodoc">ยังไม่แนบเอกสาร</option>
+          <option value="noask">ยังไม่ขอเบิกทดแทน</option>
+          <option value="waiting">รอรับทดแทน</option>
+          <option value="done">ได้รับทดแทนแล้ว</option>
+        </select></label>
     </div>
     <div class="rows" id="dispList"></div>
   </section>
@@ -970,7 +1012,8 @@ const S = {
   by: store.get('kp.by') || '',
   pin: '',
   items:[], checks:[], fixes:[], loans:[], disps:[], staff:[], roles:{}, ward:null, month:'',
-  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', dpTab:'all', shown:24, pickShown:36, ckShown:40,
+  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', dpTab:'all',
+  fxScope:null, lnScope:null, dpScope:null, shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}, served:''
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
@@ -1497,8 +1540,7 @@ function renderAlerts(){
                    needFollow(l)?' · ยืมมา '+daysOut(l)+' วัน':''}`);
       return wcard(it, late?'ต้องติดตาม':'กำลังยืม', late?'t-bad':'t-warn', meta, late);
     }),
-    go:()=>{S.lnTab='out';$$('[data-ln]').forEach(x=>
-      x.classList.toggle('on',x.dataset.ln==='out'));renderLoan();go('loan');}});
+    go:()=>{S.lnTab='out';syncSel('#lnSel','out');renderLoan();go('loan');}});
 
   if(sent.length) groups.push({
     key:'fix', title:'ส่งซ่อมอยู่', n:sent.length,
@@ -1511,8 +1553,7 @@ function renderAlerts(){
         (f.sent?`<br>ส่งเมื่อ <b>${esc(f.sent)}</b>${days>30?' (นาน '+days+' วัน)':''}`:'');
       return wcard(it,'ส่งซ่อม','t-fix',meta, days>30);
     }),
-    go:()=>{S.fxTab='open';$$('[data-fx]').forEach(x=>
-      x.classList.toggle('on',x.dataset.fx==='open'));renderFix();go('fix');}});
+    go:()=>{S.fxTab='open';syncSel('#fxSel','open');renderFix();go('fix');}});
 
   /* ชำรุดหรือไม่พบ ที่ยังไม่ได้แจ้งซ่อม ต้องเห็นชัดเพราะต้องลงมือทำต่อ */
   const brokenList=S.items.filter(i=>isBroken(i) && !of[ck(i)]);
@@ -1539,8 +1580,7 @@ function renderAlerts(){
         (f.by?`<br>ผู้แจ้ง ${esc(f.by)}`:'');
       return wcard(it,'รอซ่อม','t-warn',meta,false);
     }),
-    go:()=>{S.fxTab='wait';$$('[data-fx]').forEach(x=>
-      x.classList.toggle('on',x.dataset.fx==='wait'));renderFix();go('fix');}});
+    go:()=>{S.fxTab='wait';syncSel('#fxSel','wait');renderFix();go('fix');}});
 
   if(!groups.length){
     box.innerHTML=`<div class="wnone"><div class="ic">✓</div>
@@ -1596,7 +1636,7 @@ function goFilter(opt){
   $('#fStatus').value= opt.status || '';
   $('#fOwner').value = opt.owner  || '';
   S.filter = opt.f || 'all';
-  $$('[data-f]').forEach(x=>x.classList.toggle('on',x.dataset.f===S.filter));
+  syncSel('#fSel',S.filter);
   S.shown=24; renderStock(); go('stock');
 }
 
@@ -1620,7 +1660,7 @@ function renderKpis(){
   $$('#kpis .kpi').forEach(el=>el.onclick=()=>{
     $('#fCat').value=el.dataset.cat;
     $('#fStatus').value=''; $('#fOwner').value=''; $('#q').value='';
-    $$('[data-f]').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));
+    syncSel('#fSel','all');
     S.filter='all'; S.shown=24; renderStock(); go('stock');
   });
 }
@@ -1737,10 +1777,8 @@ function renderDash(){
   ).join('');
   $$('#vitals .chip-hero').forEach(el=>el.onclick=()=>{
     const a=el.dataset.act;
-    if(a==='gofix'){ S.fxTab='open'; $$('[data-fx]').forEach(x=>
-      x.classList.toggle('on',x.dataset.fx==='open')); renderFix(); return go('fix'); }
-    if(a==='goloan'){ S.lnTab='out'; $$('[data-ln]').forEach(x=>
-      x.classList.toggle('on',x.dataset.ln==='out')); renderLoan(); return go('loan'); }
+    if(a==='gofix'){ S.fxTab='open'; syncSel('#fxSel','open'); renderFix(); return go('fix'); }
+    if(a==='goloan'){ S.lnTab='out'; syncSel('#lnSel','out'); renderLoan(); return go('loan'); }
     goFilter({f:a});
   });
   $$('#vitals b[data-n]').forEach((el,k)=>{
@@ -1937,7 +1975,7 @@ function renderDash(){
     const a=el.dataset.lact;
     if(a==='loanx') return goFilter({f:'loanx'});
     S.lnTab = a==='goover' ? 'over' : 'out';
-    $$('[data-ln]').forEach(x=>x.classList.toggle('on',x.dataset.ln===S.lnTab));
+    syncSel('#lnSel',S.lnTab);
     renderLoan(); go('loan');
   });
 
@@ -2007,10 +2045,7 @@ function drawTrace(pct){
 }
 
 /* ═════════ ทะเบียน ═════════ */
-$$('[data-f]').forEach(b=>b.onclick=()=>{
-  $$('[data-f]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.filter=b.dataset.f; S.shown=24; renderStock();
-});
+$('#fSel').onchange=e=>{ S.filter=e.target.value; S.shown=24; renderStock(); };
 ['#q','#fCat','#fGrp','#fStatus','#fOwner'].forEach(s=>
   $(s).addEventListener('input',()=>{S.shown=24;renderStock();}));
 $('#more').onclick=()=>{S.shown+=36;renderStock();};
@@ -2996,10 +3031,7 @@ function checkMeta(c){
 }
 
 /* ═════════ หน้าตรวจ ═════════ */
-$$('[data-ck]').forEach(b=>b.onclick=()=>{
-  $$('[data-ck]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.ckTab=b.dataset.ck; S.ckShown=40; renderCheck();
-});
+$('#ckSel').onchange=e=>{ S.ckTab=e.target.value; S.ckShown=40; renderCheck(); };
 ['#ckQ','#ckOwner','#ckCat'].forEach(sel=>
   $(sel).addEventListener('input',()=>{S.ckShown=40;renderCheck();}));
 $('#inspector').addEventListener('change',e=>{
@@ -3065,10 +3097,12 @@ function findByCode(code){
 let scanner=null;
 function openScan(mode){
   S.scanMode = mode || 'check';
-  const loan = S.scanMode==='loan', fix = S.scanMode==='fix';
+  const loan = S.scanMode==='loan', fix = S.scanMode==='fix',
+        item = S.scanMode==='item';
   $('#sheet').innerHTML=`
     <div class="hd"><h4>${loan?'สแกน QR เพื่อยืม / คืน'
-      :fix?'สแกน QR เพื่อแจ้งซ่อม':'สแกน QR ครุภัณฑ์'}</h4>
+      :fix?'สแกน QR เพื่อแจ้งซ่อม'
+      :item?'สแกน QR ดูข้อมูลครุภัณฑ์':'สแกน QR ครุภัณฑ์'}</h4>
       <button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd"><div id="reader"></div>
       <div class="scanhint">${loan
@@ -3077,6 +3111,9 @@ function openScan(mode){
         : fix
         ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ถ้ามีงานซ่อมค้างอยู่จะเปิดรายละเอียดงานนั้น '+
           'ถ้ายังไม่มี จะเปิดฟอร์มแจ้งส่งซ่อม'
+        : item
+        ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดข้อมูลครุภัณฑ์ชิ้นนั้นให้ทันที '+
+          'ดูรูป ใบคุม ราคา อายุการใช้งาน และประวัติทั้งหมดได้จากหน้าเดียว'
         : 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดฟอร์มตรวจให้อัตโนมัติ'}</div></div>`;
   $('#scrim').classList.add('on');
   needLib('scan').then(()=>setTimeout(startScan,120))
@@ -3110,6 +3147,7 @@ function handleScan(txt){
   if(!it) return toast('ไม่พบครุภัณฑ์ตามรหัสที่สแกน','bad');
   if(S.scanMode==='loan') return routeLoan(it,'สแกน QR');
   if(S.scanMode==='fix')  return routeFix(it);
+  if(S.scanMode==='item') return openItem(key(it));
   openCheck(key(it),'สแกน QR');
 }
 
@@ -3120,6 +3158,13 @@ function routeLoan(it,how){
   if(!ALIVE(it)) return toast('ครุภัณฑ์นี้แทงจำหน่ายแล้ว ยืมไม่ได้','bad');
   toast('เปิดฟอร์มบันทึกการยืม','good');
   openLoanForm(key(it));
+}
+/* เปิดข้อมูลครุภัณฑ์จากเลขที่พิมพ์ ใช้ในหน้าทะเบียน */
+function itemByCode(code){
+  code=(code||'').trim(); if(!code) return;
+  const it=resolveScan(code);
+  if(!it) return toast('ไม่พบเลขครุภัณฑ์ '+code,'bad');
+  openItem(key(it));
 }
 function loanByCode(code){
   code=(code||'').trim(); if(!code) return;
@@ -3174,15 +3219,21 @@ function inMonth(dateStr, mk){
   const m=String(dateStr||'').match(/(\d{4})-(\d{2})/);
   return !!(m && (m[1]+'-'+m[2])===mk);
 }
-function mstat(el, rows){
+function mstat(el, rows, active){
   const box=$(el); if(!box) return;
   box.innerHTML=rows.map((r,i)=>
-    `<button data-i="${i}"><b style="color:${r[2]}">${r[1]}</b><span>${r[0]}</span></button>`
+    `<button data-i="${i}" class="${r[4]&&r[4]===active?'on':''}">
+       <b style="color:${r[2]}">${r[1]}</b><span>${r[0]}</span></button>`
   ).join('');
   $$(el+' button').forEach(b=>{
     const r=rows[+b.dataset.i];
     if(r && r[3]) b.onclick=r[3]; else b.style.cursor='default';
   });
+}
+/* แถบบอกว่ากำลังกรองอะไรอยู่ พร้อมปุ่มล้าง */
+function scopeBar(label, clearFn){
+  return `<div class="scope">กำลังแสดงเฉพาะ <b>${esc(label)}</b>
+    <button type="button" data-clear="1">ล้างตัวกรอง</button></div>`;
 }
 /* ═════════ แทงจำหน่ายและการเบิกทดแทน ═════════ */
 const REP_STATES = ['ยังไม่ขอเบิก','ขอเบิกแล้ว','ได้รับทดแทนแล้ว','ไม่ขอทดแทน'];
@@ -3193,10 +3244,7 @@ function dispMap(){
   const m={}; S.disps.forEach(d=>{ m[d.cat+'|'+nk(d.code)]=d; }); return m;
 }
 
-$$('[data-dp]').forEach(b=>b.onclick=()=>{
-  $$('[data-dp]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.dpTab=b.dataset.dp; renderDisp();
-});
+$('#dpSel').onchange=e=>{ S.dpTab=e.target.value; renderDisp(); };
 $('#dpQ').addEventListener('input',renderDisp);
 
 function renderDisp(){
@@ -3216,36 +3264,32 @@ function renderDisp(){
   const waiting=rows.filter(r=>r.d&&r.d.rep==='ขอเบิกแล้ว').length;
   const done=rows.filter(r=>r.d&&r.d.rep==='ได้รับทดแทนแล้ว').length;
 
+  const mkD=S.month;
   let list=rows;
   if(S.dpTab==='nodoc')   list=rows.filter(r=>!r.d||!r.d.file);
   if(S.dpTab==='noask')   list=rows.filter(r=>!r.d||r.d.rep==='ยังไม่ขอเบิก');
   if(S.dpTab==='waiting') list=rows.filter(r=>r.d&&r.d.rep==='ขอเบิกแล้ว');
   if(S.dpTab==='done')    list=rows.filter(r=>r.d&&r.d.rep==='ได้รับทดแทนแล้ว');
+  if(S.dpTab==='month')   list=rows.filter(r=>r.d&&inMonth(r.d.date,mkD));
   if(q) list=list.filter(r=>[r.it.name,r.it.code,r.d&&r.d.doc,r.d&&r.d.why]
     .join(' ').toLowerCase().includes(q));
 
-  const mkD=S.month;
   mstat('#dpStat',[
-    ['จำหน่ายรอบนี้', S.disps.filter(x=>inMonth(x.date,mkD)).length, 'var(--plum)', null],
-    ['ยังไม่แนบเอกสาร', noDoc, 'var(--bad)',
-      ()=>{S.dpTab='nodoc';$$('[data-dp]').forEach(x=>
-        x.classList.toggle('on',x.dataset.dp==='nodoc'));renderDisp();}],
-    ['ยังไม่ขอเบิก', noAsk, 'var(--warn)',
-      ()=>{S.dpTab='noask';$$('[data-dp]').forEach(x=>
-        x.classList.toggle('on',x.dataset.dp==='noask'));renderDisp();}],
-    ['รอรับทดแทน', waiting, 'var(--plum)',
-      ()=>{S.dpTab='waiting';$$('[data-dp]').forEach(x=>
-        x.classList.toggle('on',x.dataset.dp==='waiting'));renderDisp();}],
-    ['ได้รับทดแทนแล้ว', done, 'var(--ok)',
-      ()=>{S.dpTab='done';$$('[data-dp]').forEach(x=>
-        x.classList.toggle('on',x.dataset.dp==='done'));renderDisp();}]
-  ]);
+    ['จำหน่ายรอบนี้', S.disps.filter(x=>inMonth(x.date,mkD)).length,'var(--plum)','month'],
+    ['ยังไม่แนบเอกสาร', noDoc, 'var(--bad)','nodoc'],
+    ['ยังไม่ขอเบิก',   noAsk, 'var(--warn)','noask'],
+    ['รอรับทดแทน',     waiting,'var(--plum)','waiting'],
+    ['ได้รับทดแทนแล้ว', done, 'var(--ok)','done']
+  ], S.dpTab, t=>{ S.dpTab=t; renderDisp(); });
+  syncSel('#dpSel',S.dpTab);
 
   $('#dpSub').innerHTML=`แทงจำหน่ายแล้วทั้งหมด <b style="color:var(--plum)">${rows.length}</b> รายการ · `+
     `ยังไม่แนบใบ <b style="color:var(--bad)">${noDoc}</b> · `+
     `ยังไม่ขอเบิกทดแทน <b style="color:var(--warn)">${noAsk}</b> · `+
     `รอรับ ${waiting} · ได้รับแล้ว ${done}<br>`+
-    `รายการเหล่านี้ไม่ต้องตรวจสอบประจำเดือน และไม่นับรวมในเปอร์เซ็นต์ความคืบหน้า`;
+    (S.dpTab==='month'
+      ? `<br>กำลังแสดง <b style="color:var(--plum)">จำหน่ายในรอบ ${thMonth(mkD)}</b> ${list.length} รายการ`
+      : `<br>รายการเหล่านี้ไม่ต้องตรวจสอบประจำเดือน และไม่นับรวมในเปอร์เซ็นต์ความคืบหน้า`);
 
   $('#dispList').innerHTML = list.length ? list.slice(0,120).map(r=>{
     const u=imgUrl(r.it.img,180);
@@ -3481,41 +3525,36 @@ function daysOut(l){
 }
 function needFollow(l){ return l.state!=='คืนแล้ว' && !l.due && daysOut(l)>30; }
 
-$$('[data-ln]').forEach(b=>b.onclick=()=>{
-  $$('[data-ln]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.lnTab=b.dataset.ln; renderLoan();
-});
+$('#lnSel').onchange=e=>{ S.lnTab=e.target.value; renderLoan(); };
 $('#lnQ').addEventListener('input',renderLoan);
 
 function renderLoan(){
   const q=$('#lnQ').value.trim().toLowerCase();
   const out=S.loans.filter(l=>l.state!=='คืนแล้ว');
   const over=out.filter(l=>isOver(l)||needFollow(l));
-  let list = S.lnTab==='over' ? out.filter(l=>isOver(l)||needFollow(l))
-           : S.lnTab==='all'  ? S.loans.slice().reverse() : out;
+  const mk=S.month;
+  const LN_LABEL={mOut:'ยืมออกในรอบ '+thMonth(mk), mBack:'คืนแล้วในรอบ '+thMonth(mk)};
+  let list = S.lnTab==='over'  ? out.filter(l=>isOver(l)||needFollow(l))
+           : S.lnTab==='all'   ? S.loans.slice().reverse()
+           : S.lnTab==='mOut'  ? S.loans.filter(l=>inMonth(l.out,mk))
+           : S.lnTab==='mBack' ? S.loans.filter(l=>l.state==='คืนแล้ว'&&inMonth(l.back,mk))
+           : out;
   if(q) list=list.filter(l=>[l.name,l.code,l.who,l.place].join(' ').toLowerCase().includes(q));
 
-  const mk=S.month;
   mstat('#lnStat',[
-    ['ยืมออกรอบนี้', S.loans.filter(l=>inMonth(l.out,mk)).length, 'var(--plum)',
-      ()=>{S.lnTab='all';$$('[data-ln]').forEach(x=>
-        x.classList.toggle('on',x.dataset.ln==='all'));renderLoan();}],
-    ['คืนแล้วรอบนี้', S.loans.filter(l=>l.state==='คืนแล้ว'&&inMonth(l.back,mk)).length,
-      'var(--ok)', null],
-    ['กำลังยืมอยู่', out.length, 'var(--warn)',
-      ()=>{S.lnTab='out';$$('[data-ln]').forEach(x=>
-        x.classList.toggle('on',x.dataset.ln==='out'));renderLoan();}],
-    ['ต้องติดตาม', over.length, 'var(--bad)',
-      ()=>{S.lnTab='over';$$('[data-ln]').forEach(x=>
-        x.classList.toggle('on',x.dataset.ln==='over'));renderLoan();}],
-    ['ยืมทั้งหมด', S.loans.length, 'var(--dim)',
-      ()=>{S.lnTab='all';$$('[data-ln]').forEach(x=>
-        x.classList.toggle('on',x.dataset.ln==='all'));renderLoan();}]
-  ]);
+    ['ยืมออกรอบนี้', S.loans.filter(l=>inMonth(l.out,mk)).length,'var(--plum)','mOut'],
+    ['คืนแล้วรอบนี้',S.loans.filter(l=>l.state==='คืนแล้ว'&&inMonth(l.back,mk)).length,
+      'var(--ok)','mBack'],
+    ['กำลังยืมอยู่', out.length, 'var(--warn)','out'],
+    ['ต้องติดตาม',  over.length, 'var(--bad)','over'],
+    ['ยืมทั้งหมด',  S.loans.length, 'var(--dim)','all']
+  ], S.lnTab, t=>{ S.lnTab=t; renderLoan(); });
+  syncSel('#lnSel',S.lnTab);
 
   $('#loanSub').innerHTML=`รอบ ${thMonth(mk)} · กำลังยืมอยู่ <b style="color:var(--plum)">${out.length}</b> รายการ`+
     (over.length?` · <b style="color:var(--bad)">ต้องติดตาม ${over.length} รายการ</b>`:'')+
-    ' · บันทึกการยืมออกและติดตามจนได้รับคืน';
+    (LN_LABEL[S.lnTab]?`<br>กำลังแสดง <b style="color:var(--plum)">${LN_LABEL[S.lnTab]}</b> `+
+      `${list.length} รายการ`:' · บันทึกการยืมออกและติดตามจนได้รับคืน');
 
   $('#loanList').innerHTML = list.length ? list.slice(0,80).map(l=>{
     const it=S.items.find(i=>i.cat===l.cat && nk(i.code)===nk(l.code));
@@ -3533,8 +3572,9 @@ function renderLoan(){
         : needFollow(l) ? `<span class="tag t-bad">ยืมมา ${daysOut(l)} วัน</span>`
              : `<span class="tag t-warn">กำลังยืม</span>`}</button>`;
   }).join('')
-   : `<div class="empty"><b>${S.lnTab==='over'?'ไม่มีรายการเลยกำหนดคืน':'ไม่มีรายการยืม'}</b>
-       กดปุ่มบันทึกการยืมใหม่เพื่อเริ่มบันทึก</div>`;
+   : `<div class="empty"><b>ไม่มีรายการ${LN_LABEL[S.lnTab]?'ในหมวด '+LN_LABEL[S.lnTab]
+        :S.lnTab==='over'?'ที่ต้องติดตาม':'ยืม'}</b>
+       สแกน QR หรือกดบันทึกการยืมใหม่เพื่อเริ่มบันทึก</div>`;
   $$('#loanList .row').forEach(el=>el.onclick=()=>openLoanDetail(+el.dataset.r));
 }
 
@@ -3713,10 +3753,7 @@ async function submitReturn(row,cat,itemRow){
 }
 
 /* ═════════ ส่งซ่อม ═════════ */
-$$('[data-fx]').forEach(b=>b.onclick=()=>{
-  $$('[data-fx]').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on'); S.fxTab=b.dataset.fx; renderFix();
-});
+$('#fxSel').onchange=e=>{ S.fxTab=e.target.value; renderFix(); };
 $('#fxQ').addEventListener('input',renderFix);
 
 const FIX_OPEN = f => f.state!=='ซ่อมเสร็จ' && f.state!=='ซ่อมไม่ได้';
@@ -3728,31 +3765,32 @@ function renderFix(){
   const q=$('#fxQ').value.trim().toLowerCase();
   const open=S.fixes.filter(FIX_OPEN);
   const wait=open.filter(f=>f.state==='รอซ่อมเวลาราชการ');
-  let list = S.fxTab==='wait' ? wait
-           : S.fxTab==='all'  ? S.fixes.slice().reverse() : open;
-  if(q) list=list.filter(f=>[f.name,f.code,f.issue,f.to].join(' ').toLowerCase().includes(q));
-
   const mkF=S.month;
   const closed=S.fixes.filter(f=>!FIX_OPEN(f));
+  const FX_LABEL={mSent:'แจ้งซ่อมในรอบ '+thMonth(mkF), mBack:'ปิดงานในรอบ '+thMonth(mkF),
+                  doing:'กำลังซ่อม', cant:'ซ่อมไม่ได้'};
+  let list = S.fxTab==='wait'  ? wait
+           : S.fxTab==='all'   ? S.fixes.slice().reverse()
+           : S.fxTab==='mSent' ? S.fixes.filter(f=>inMonth(f.sent,mkF))
+           : S.fxTab==='mBack' ? closed.filter(f=>inMonth(f.back,mkF))
+           : S.fxTab==='doing' ? open.filter(f=>f.state!=='รอซ่อมเวลาราชการ')
+           : S.fxTab==='cant'  ? S.fixes.filter(f=>f.state==='ซ่อมไม่ได้')
+           : open;
+  if(q) list=list.filter(f=>[f.name,f.code,f.issue,f.to].join(' ').toLowerCase().includes(q));
+
   mstat('#fxStat',[
-    ['แจ้งซ่อมรอบนี้', S.fixes.filter(f=>inMonth(f.sent,mkF)).length, 'var(--plum)',
-      ()=>{S.fxTab='all';$$('[data-fx]').forEach(x=>
-        x.classList.toggle('on',x.dataset.fx==='all'));renderFix();}],
-    ['ปิดงานรอบนี้', closed.filter(f=>inMonth(f.back,mkF)).length, 'var(--ok)', null],
-    ['กำลังซ่อม', open.filter(f=>f.state!=='รอซ่อมเวลาราชการ').length, 'var(--plum)',
-      ()=>{S.fxTab='open';$$('[data-fx]').forEach(x=>
-        x.classList.toggle('on',x.dataset.fx==='open'));renderFix();}],
-    ['รอซ่อมเวลาราชการ', wait.length, 'var(--warn)',
-      ()=>{S.fxTab='wait';$$('[data-fx]').forEach(x=>
-        x.classList.toggle('on',x.dataset.fx==='wait'));renderFix();}],
-    ['ซ่อมไม่ได้', S.fixes.filter(f=>f.state==='ซ่อมไม่ได้').length, 'var(--bad)',
-      ()=>{S.fxTab='all';$$('[data-fx]').forEach(x=>
-        x.classList.toggle('on',x.dataset.fx==='all'));renderFix();}]
-  ]);
+    ['แจ้งซ่อมรอบนี้', S.fixes.filter(f=>inMonth(f.sent,mkF)).length, 'var(--plum)','mSent'],
+    ['ปิดงานรอบนี้',  closed.filter(f=>inMonth(f.back,mkF)).length, 'var(--ok)','mBack'],
+    ['กำลังซ่อม',     open.filter(f=>f.state!=='รอซ่อมเวลาราชการ').length,'var(--plum)','doing'],
+    ['รอซ่อมเวลาราชการ', wait.length, 'var(--warn)','wait'],
+    ['ซ่อมไม่ได้',    S.fixes.filter(f=>f.state==='ซ่อมไม่ได้').length,'var(--bad)','cant']
+  ], S.fxTab, t=>{ S.fxTab=t; renderFix(); });
+  syncSel('#fxSel',S.fxTab);
 
   $('#fixSub').innerHTML=`รอบ ${thMonth(mkF)} · ยังไม่ปิดงาน <b style="color:var(--plum)">${open.length}</b> รายการ`+
     (wait.length?` · <b style="color:var(--warn)">รอซ่อมเวลาราชการ ${wait.length} รายการ</b>`:'')+
-    ' · บันทึกการส่งซ่อมและติดตามจนรับเครื่องคืน';
+    (FX_LABEL[S.fxTab]?`<br>กำลังแสดง <b style="color:var(--plum)">${FX_LABEL[S.fxTab]}</b> `+
+      `${list.length} รายการ`:' · บันทึกการส่งซ่อมและติดตามจนรับเครื่องคืน');
 
   $('#fixList').innerHTML = list.length ? list.slice(0,80).map(f=>{
     const it=S.items.find(i=>i.cat===f.cat && nk(i.code)===nk(f.code));
@@ -3766,7 +3804,7 @@ function renderFix(){
       ${f.file?`<span class="tag t-fix">มีใบแจ้ง</span>`:''}
       <span class="tag ${FIX_TAG(f)}">${esc(f.state)}</span></button>`;
   }).join('')
-   : `<div class="empty"><b>${S.fxTab==='wait'?'ไม่มีรายการรอซ่อม':'ไม่มีงานซ่อม'}</b>
+   : `<div class="empty"><b>ไม่มีรายการ${FX_LABEL[S.fxTab]?'ในหมวด '+FX_LABEL[S.fxTab]:''}</b>
        สแกน QR หรือกดเลือกจากรายการเพื่อแจ้งซ่อม</div>`;
   $$('#fixList .row').forEach(el=>el.onclick=()=>openFixDetail(+el.dataset.r));
 }
