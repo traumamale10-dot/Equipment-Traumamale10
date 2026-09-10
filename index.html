@@ -830,10 +830,18 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <p class="vs" id="dpSub">รายการที่จำหน่ายออกจากทะเบียนแล้ว ไม่ต้องตรวจสอบประจำเดือน
       และไม่นับรวมในเปอร์เซ็นต์ความคืบหน้า</p>
     <div class="tools">
+      <button class="btn pri" onclick="openScan('disp')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>
+          <path d="M7 12h10"/></svg>สแกน QR แทงจำหน่าย</button>
+      <input class="inp" id="dpCode" placeholder="หรือพิมพ์เลขครุภัณฑ์" style="flex:1;min-width:180px">
+      <button class="btn" onclick="dispByCode(dpCode.value)">ค้นหา</button>
+      <button class="btn" onclick="openDispPick()">เลือกจากรายการ</button>
+    </div>
+    <div class="tools">
       <label class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input class="inp" id="dpQ" placeholder="ค้นชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือเลขที่หนังสือ"></label>
-      <button class="btn pri" onclick="openDispPick()">บันทึกแทงจำหน่ายใหม่</button>
+        <input class="inp" id="dpQ" placeholder="กรองรายการด้วยชื่อครุภัณฑ์ เลขครุภัณฑ์ หรือเลขที่หนังสือ"></label>
     </div>
     <div class="mstat" id="dpStat"></div>
     <div class="tools" style="margin-bottom:16px">
@@ -1002,7 +1010,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-08 · v13';
+const APP_VERSION = '2026-09-09 · v14';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -3111,11 +3119,12 @@ let scanner=null;
 function openScan(mode){
   S.scanMode = mode || 'check';
   const loan = S.scanMode==='loan', fix = S.scanMode==='fix',
-        item = S.scanMode==='item';
+        item = S.scanMode==='item', disp = S.scanMode==='disp';
   $('#sheet').innerHTML=`
     <div class="hd"><h4>${loan?'สแกน QR เพื่อยืม / คืน'
       :fix?'สแกน QR เพื่อแจ้งซ่อม'
-      :item?'สแกน QR ดูข้อมูลครุภัณฑ์':'สแกน QR ครุภัณฑ์'}</h4>
+      :item?'สแกน QR ดูข้อมูลครุภัณฑ์'
+      :disp?'สแกน QR เพื่อแทงจำหน่าย':'สแกน QR ครุภัณฑ์'}</h4>
       <button class="x" onclick="closeSheet()">✕</button></div>
     <div class="bd"><div id="reader"></div>
       <div class="scanhint">${loan
@@ -3127,6 +3136,9 @@ function openScan(mode){
         : item
         ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดข้อมูลครุภัณฑ์ชิ้นนั้นให้ทันที '+
           'ดูรูป ใบคุม ราคา อายุการใช้งาน และประวัติทั้งหมดได้จากหน้าเดียว'
+        : disp
+        ? 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ถ้าเคยบันทึกแทงจำหน่ายไว้แล้วจะเปิดข้อมูลเดิมให้แก้ '+
+          'ถ้ายังไม่เคย จะเปิดฟอร์มบันทึกใหม่'
         : 'หันกล้องไปที่ QR บนสติ๊กเกอร์ ระบบจะเปิดฟอร์มตรวจให้อัตโนมัติ'}</div></div>`;
   $('#scrim').classList.add('on');
   needLib('scan').then(()=>setTimeout(startScan,120))
@@ -3161,6 +3173,7 @@ function handleScan(txt){
   if(S.scanMode==='loan') return routeLoan(it,'สแกน QR');
   if(S.scanMode==='fix')  return routeFix(it);
   if(S.scanMode==='item') return openItem(key(it));
+  if(S.scanMode==='disp') return routeDisp(it);
   openCheck(key(it),'สแกน QR');
 }
 
@@ -3331,6 +3344,19 @@ function renderDisp(){
        กดปุ่มบันทึกแทงจำหน่ายใหม่เพื่อเริ่มบันทึก</div>`;
   $$('#dispList .row').forEach(el=>
     el.onclick=()=>openDispForm(el.dataset.c, el.dataset.x));
+}
+
+/* สแกนหรือพิมพ์เลขแล้วเปิดฟอร์มแทงจำหน่ายของชิ้นนั้น */
+function routeDisp(it){
+  const d=dispMap()[it.cat+'|'+nk(it.code)];
+  toast(d?'มีบันทึกแทงจำหน่ายอยู่แล้ว · เปิดข้อมูลเดิม':'เปิดฟอร์มบันทึกแทงจำหน่าย','good');
+  openDispForm(it.cat, it.code);
+}
+function dispByCode(code){
+  code=(code||'').trim(); if(!code) return;
+  const it=resolveScan(code);
+  if(!it) return toast('ไม่พบเลขครุภัณฑ์ '+code,'bad');
+  routeDisp(it);
 }
 
 /* เลือกครุภัณฑ์ที่จะแทงจำหน่าย */
