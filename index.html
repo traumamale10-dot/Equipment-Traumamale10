@@ -1023,7 +1023,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-09 · v16';
+const APP_VERSION = '2026-09-09 · v17';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -1474,7 +1474,6 @@ function apply(d){
   fillSelect('#sOwner',ow,'ทุกผู้รับผิดชอบ');
   fillSelect('#ckOwner',ow,'ทุกผู้รับผิดชอบ');
   fillLookup(); buildMonths();
-  if(S.by) focusInspector(S.by, false);
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
   $('#inspector').innerHTML=staffOptions(S.by);
