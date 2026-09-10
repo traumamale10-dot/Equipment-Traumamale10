@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>คลังครุภัณฑ์ · ศัลยกรรมอุบัติเหตุชาย ชั้น 10</title>
 <meta name="theme-color" content="#F7F3FF">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style"
@@ -418,6 +421,19 @@ select.inp{appearance:none;padding-right:38px;
 .drop .mid b{display:block;font-family:var(--f-d);font-weight:500;font-size:15.5px}
 .drop .mid span{font-size:13.5px;color:var(--dim)}
 .drop input[type=file]{display:none}
+
+/* ══════════ ช่องเซ็นลายเซ็น ══════════ */
+.sigbox{border:2px dashed var(--line2);border-radius:16px;background:var(--surface);
+  overflow:hidden;position:relative}
+.sigbox canvas{display:block;width:100%;height:170px;touch-action:none;cursor:crosshair}
+.sigbox .hint{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+  color:var(--dim2);font-size:15px;transition:.2s}
+.sigbox.drawn .hint{opacity:0}
+.sigbox .line{position:absolute;left:8%;right:8%;bottom:38px;border-bottom:1.5px solid var(--line2);
+  pointer-events:none}
+.sigbar{display:flex;gap:9px;align-items:center;margin-top:9px}
+.sigview{width:100%;max-width:320px;border:1px solid var(--line);border-radius:12px;
+  background:#fff;display:block}
 .drop .act{padding:9px 16px;border-radius:11px;background:var(--plum);color:#fff;
   font-family:var(--f-d);font-weight:500;font-size:14.5px;white-space:nowrap;cursor:pointer}
 .bar-up{height:6px;border-radius:9px;background:var(--lav-soft);overflow:hidden;margin-top:8px;display:none}
@@ -726,6 +742,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
       <span style="flex:1"></span>
       <button class="btn" onclick="openOwnerReport()">พิมพ์รายการของผู้รับผิดชอบ</button>
       <button class="btn" onclick="openBulkOwner()">เปลี่ยนผู้รับผิดชอบหลายรายการ</button>
+      <button class="btn pri" onclick="openAddItem()">เพิ่มครุภัณฑ์ใหม่</button>
     </div>
     <div class="grid" id="stockGrid"></div>
     <div style="text-align:center;margin-top:22px">
@@ -869,6 +886,46 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         </select></label>
     </div>
     <div class="rows" id="dispList"></div>
+  </section>
+
+  <section class="view" id="v-plan">
+    <h2 class="vt">วางแผนจัดซื้อทดแทน</h2>
+    <p class="vs" id="planSub">จัดลำดับความจำเป็นจากอายุการใช้งาน ค่าซ่อมสะสม
+      จำนวนครั้งที่ซ่อม และสถานะปัจจุบัน</p>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>เกณฑ์ที่ใช้คำนวณ</h3>
+      <div class="tools">
+        <label class="note">อายุใช้งานมาตรฐาน · การแพทย์
+          <input class="inp" id="pgLifeMed" type="number" min="1" max="30" value="8"
+                 style="width:80px;padding:8px 10px;margin:0 6px"> ปี</label>
+        <label class="note">สำนักงาน
+          <input class="inp" id="pgLifeOff" type="number" min="1" max="30" value="10"
+                 style="width:80px;padding:8px 10px;margin:0 6px"> ปี</label>
+        <label class="note">ค่าซ่อมสะสมเกิน
+          <input class="inp" id="pgCostPct" type="number" min="10" max="200" step="5" value="50"
+                 style="width:80px;padding:8px 10px;margin:0 6px"> % ของราคาซื้อ ถือว่าไม่คุ้ม</label>
+        <button class="btn" onclick="renderPlan()">คำนวณใหม่</button>
+      </div>
+      <div class="note" style="margin-top:10px">
+        ปรับตัวเลขให้ตรงกับเกณฑ์ของหน่วยงานได้ ระบบจะจัดลำดับใหม่ทันที
+        การคำนวณทำในเครื่อง ไม่ส่งข้อมูลออกไปที่ใด</div>
+    </div>
+
+    <div class="mstat" id="pgStat"></div>
+    <div class="card" style="margin-bottom:16px"><h3>สรุปงบประมาณที่ควรตั้ง</h3>
+      <div id="pgBudget"></div></div>
+    <div class="tools" style="margin-bottom:16px">
+      <label class="pickwrap"><span>แสดงรายการ</span>
+        <select class="inp" id="pgSel">
+          <option value="urgent">เร่งด่วน</option>
+          <option value="year">ควรทดแทนปีนี้</option>
+          <option value="watch">เฝ้าระวัง</option>
+          <option value="all">ทั้งหมดที่มีคะแนน</option>
+        </select></label>
+      <button class="btn" onclick="planImage()">บันทึกเป็นรูปภาพ</button>
+    </div>
+    <div class="rows" id="planList"></div>
   </section>
 
   <section class="view" id="v-sticker">
@@ -1023,7 +1080,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-09 · v17';
+const APP_VERSION = '2026-09-09 · v21';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -1036,7 +1093,7 @@ const S = {
   by: store.get('kp.by') || '',
   pin: '',
   items:[], checks:[], fixes:[], loans:[], disps:[], staff:[], roles:{}, ward:null, month:'',
-  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', dpTab:'all',
+  filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', dpTab:'all', pgTab:'urgent',
   fxScope:null, lnScope:null, dpScope:null, shown:24, pickShown:36, ckShown:40,
   sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}, served:'',
   watchOpen:{}
@@ -1096,6 +1153,12 @@ const isGone   = it => stOf(it)===ST.gone;
 const isBroken = it => stOf(it)===ST.broke || stOf(it)===ST.lost;
 
 const today10 = () => new Date().toISOString().slice(0,10);
+
+/* หน่วยสำหรับวาดรูปขนาดกระดาษ A4 */
+const DPI = 150;                 /* ความละเอียดงานพิมพ์ */
+const PX  = DPI / 25.4;          /* พิกเซลต่อมิลลิเมตร */
+const PT  = PX / 2.8346;         /* พิกเซลต่อพอยต์ */
+const safeName = t => String(t).replace(/[\/\\?%*:|"<>]/g,'-').trim();
 const FIX_OPEN = f => f.state!=='ซ่อมเสร็จ' && f.state!=='ซ่อมไม่ได้';
 /* ค่าใช้จ่ายในการซ่อม รับได้ทั้งตัวเลขและข้อความที่มีเครื่องหมายคั่นหลักพัน */
 const costOf = f => {
@@ -1239,6 +1302,7 @@ const NAV=[
   ['loan','ยืม-คืน','M4 7h11l-3-3M20 17H9l3 3'],
   ['fix','ส่งซ่อม','M14.7 6.3a4 4 0 0 1-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2 2-2-2 2-2z'],
   ['dispose','แทงจำหน่าย','M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6'],
+  ['plan','วางแผนซื้อ','M4 19V9m5 10V5m5 14v-7m5 7V8M3 21h18'],
   ['sticker','สติ๊กเกอร์','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM19 19h2v2h-2z'],
 ];
 /* หน้าตั้งค่าไม่แสดงในเมนู เข้าถึงได้สองทาง
@@ -1444,7 +1508,10 @@ function clearLocal(){
   setTimeout(()=>location.reload(), 700);
 }
 function showConn(msg){
-  $('#connMsg').textContent=msg+' — ข้อมูลจึงยังไม่แสดง ลองกดปุ่มลองใหม่ หรือตรวจ URL ในหน้าตั้งค่า';
+  $('#connMsg').innerHTML=esc(msg)+
+    ' — ข้อมูลจึงยังไม่แสดง ลองกดปุ่มลองใหม่ หรือตรวจ URL ในหน้าตั้งค่า'+
+    `<br><span style="font-size:13.5px;color:var(--dim)">หน้าเว็บเวอร์ชัน ${
+      esc(APP_VERSION)} · ถ้าเวอร์ชันไม่ตรงกับที่เพิ่งอัปโหลด ให้กด Ctrl+Shift+R</span>`;
   $('#conn').classList.add('on');
   $('#dashSub').textContent='ยังไม่ได้เชื่อมต่อฐานข้อมูล';
   $('#led').className='led err';
@@ -1539,6 +1606,7 @@ function openFixMap(){
 const ALIVE = it => !isGone(it);
 function renderAll(){
   renderDash(); renderStock(); renderCheck(); renderLoan(); renderFix(); renderDisp();
+  renderPlan();
 }
 
 /* ───── ครุภัณฑ์ที่ต้องติดตาม แสดงเป็นการ์ดพร้อมรูป ─────
@@ -2221,6 +2289,306 @@ function openItem(k){
   $('#scrim').classList.add('on');
 }
 
+/* ═════════ วิเคราะห์เพื่อวางแผนจัดซื้อทดแทน ═════════
+   ให้คะแนนความจำเป็นจากข้อมูลที่ระบบเก็บไว้จริง 5 ด้าน
+   คำนวณในเครื่องทั้งหมด ไม่ส่งข้อมูลออกนอกระบบ                          */
+const PLAN_LEVEL = [
+  { key:'urgent', min:70, name:'เร่งด่วน',        col:'var(--bad)',  bg:'var(--bad-bg)' },
+  { key:'year',   min:50, name:'ควรทดแทนปีนี้',  col:'var(--warn)', bg:'var(--warn-bg)' },
+  { key:'watch',  min:30, name:'เฝ้าระวัง',      col:'var(--plum)', bg:'var(--lav-soft)' },
+  { key:'ok',     min:0,  name:'ยังใช้ได้',      col:'var(--ok)',   bg:'var(--ok-bg)' }
+];
+
+function planScore(it, cfg, fxByItem, disp){
+  const r=[];                       /* เหตุผลประกอบคะแนน */
+  let sc=0;
+  const life = it.cat==='med' ? cfg.lifeMed : cfg.lifeOff;
+  const age  = ageOf(it.recv);
+
+  if(age!==null){
+    const ratio=age/life;
+    const pt=Math.min(40, Math.round(ratio*32));
+    if(pt>0){ sc+=pt;
+      r.push(ratio>=1
+        ? `ใช้งานมาแล้ว ${age.toFixed(1)} ปี เกินอายุมาตรฐาน ${life} ปี`
+        : `ใช้งานมาแล้ว ${age.toFixed(1)} ปี จากมาตรฐาน ${life} ปี`); }
+  } else {
+    sc+=5; r.push('ยังไม่ได้บันทึกวันรับมอบ จึงประเมินอายุไม่ได้');
+  }
+
+  const fx=fxByItem[ck(it)]||{sum:0,n:0,cant:false};
+  if(fx.sum>0 && it.price>0){
+    const pct=fx.sum/it.price*100;
+    const pt=Math.min(30, Math.round(pct/cfg.costPct*30));
+    sc+=pt;
+    r.push(`ค่าซ่อมสะสม ${baht(fx.sum)} บาท คิดเป็น ${Math.round(pct)}% ของราคาซื้อ`);
+  } else if(fx.sum>0){
+    sc+=10; r.push(`ค่าซ่อมสะสม ${baht(fx.sum)} บาท (ยังไม่ได้บันทึกราคาซื้อ)`);
+  }
+  if(fx.n>=2){ const pt=Math.min(15,(fx.n-1)*5); sc+=pt;
+    r.push(`ส่งซ่อมมาแล้ว ${fx.n} ครั้ง`); }
+  if(fx.cant){ sc+=25; r.push('มีผลการซ่อมว่าซ่อมไม่ได้'); }
+
+  if(isBroken(it)){ sc+=25; r.push('สถานะปัจจุบันคือ '+it.status); }
+  if(isGone(it)){
+    const d=disp[ck(it)];
+    if(!d || d.rep==='ยังไม่ขอเบิก'){ sc+=30; r.push('แทงจำหน่ายแล้วแต่ยังไม่ได้ขอเบิกทดแทน'); }
+    else if(d.rep==='ขอเบิกแล้ว'){ sc+=10; r.push('ขอเบิกทดแทนแล้ว อยู่ระหว่างรอรับ'); }
+    else { sc=0; r.length=0; r.push('ได้รับทดแทนแล้ว'); }
+  }
+  return { score:Math.min(100,sc), reasons:r, age, life, fx };
+}
+
+function planData(){
+  const cfg={
+    lifeMed:Math.max(1,+$('#pgLifeMed').value||8),
+    lifeOff:Math.max(1,+$('#pgLifeOff').value||10),
+    costPct:Math.max(10,+$('#pgCostPct').value||50)
+  };
+  const fxByItem={};
+  S.fixes.forEach(f=>{
+    const k=f.cat+'|'+nk(f.code);
+    if(!fxByItem[k]) fxByItem[k]={sum:0,n:0,cant:false};
+    fxByItem[k].sum+=costOf(f); fxByItem[k].n++;
+    if(f.state==='ซ่อมไม่ได้') fxByItem[k].cant=true;
+  });
+  const disp=dispMap();
+
+  const rows=S.items.map(it=>{
+    const r=planScore(it,cfg,fxByItem,disp);
+    const lv=PLAN_LEVEL.find(l=>r.score>=l.min);
+    return {it, ...r, lv};
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  return {rows, cfg};
+}
+
+function renderPlan(){
+  if(!$('#planList')) return;
+  const {rows,cfg}=planData();
+  const by=k=>rows.filter(x=>x.lv.key===k);
+  const urgent=by('urgent'), year=by('year'), watch=by('watch');
+
+  mstat('#pgStat',[
+    ['เร่งด่วน', urgent.length, 'var(--bad)','urgent'],
+    ['ควรทดแทนปีนี้', year.length, 'var(--warn)','year'],
+    ['เฝ้าระวัง', watch.length, 'var(--plum)','watch'],
+    ['รวมที่มีคะแนน', rows.length, 'var(--dim)','all']
+  ], S.pgTab, t=>{ S.pgTab=t; renderPlan(); });
+  syncSel('#pgSel', S.pgTab);
+
+  const sum=list=>list.reduce((a,x)=>a+(Number(x.it.price)||0),0);
+  const noPrice=list=>list.filter(x=>!Number(x.it.price)).length;
+  const bd=[['เร่งด่วน',urgent,'var(--bad)'],['ควรทดแทนปีนี้',year,'var(--warn)'],
+            ['เฝ้าระวัง',watch,'var(--plum)']];
+  $('#pgBudget').innerHTML = rows.length
+    ? bd.map(([lb,list,col])=>`<div class="stat">
+        <span>${lb} <span style="color:var(--dim2)">${list.length} รายการ</span></span>
+        <b style="color:${col}">${baht(sum(list))} บาท</b></div>`).join('')
+      + `<div class="stat"><span><b>รวมเร่งด่วนและควรทดแทนปีนี้</b></span>
+          <b style="color:var(--plum);font-size:20px">${baht(sum(urgent)+sum(year))} บาท</b></div>`
+      + `<div class="note" style="margin-top:10px">ประมาณจากราคาซื้อเดิม
+          ราคาจริงในการจัดซื้อใหม่มักสูงกว่านี้${
+          noPrice(rows)?` · ยังไม่ได้บันทึกราคาซื้อ ${noPrice(rows)} รายการ จึงยังไม่ถูกนับรวม`:''}</div>`
+    : '<div class="note">ยังไม่มีรายการที่เข้าเกณฑ์ต้องทดแทน</div>';
+
+  const list = S.pgTab==='all' ? rows : by(S.pgTab);
+  $('#planSub').innerHTML=`จัดลำดับจากอายุการใช้งาน ค่าซ่อมสะสม จำนวนครั้งที่ซ่อม `+
+    `และสถานะปัจจุบัน · เกณฑ์อายุ ${cfg.lifeMed} ปี (การแพทย์) และ ${cfg.lifeOff} ปี (สำนักงาน)`;
+
+  $('#planList').innerHTML = list.length ? list.slice(0,60).map((x,i)=>{
+    const u=imgUrl(x.it.img,180);
+    return `<button class="row" data-k="${esc(key(x.it))}">
+      ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
+        :`<div class="thumb"></div>`}
+      <div class="mid"><b>${esc(x.it.name)}</b>
+        <span>${esc(x.it.code)} · ${esc(x.it.owner||'—')}${
+          x.it.price?' · ราคาซื้อ '+baht(x.it.price)+' บาท':''}</span>
+        <span class="meta">${x.reasons.map(r=>`<em>${esc(r)}</em>`).join('')}</span>
+        <div class="meter" style="margin-top:7px">
+          <i style="width:${x.score}%;background:${x.lv.col}"></i></div></div>
+      <div style="text-align:right;flex:none">
+        <span class="tag" style="background:${x.lv.bg};color:${x.lv.col}">${x.lv.name}</span>
+        <div style="font-family:var(--f-d);font-weight:700;font-size:19px;color:${x.lv.col};
+          margin-top:5px">${x.score}</div></div></button>`;
+  }).join('') + (list.length>60?`<div class="note" style="margin-top:10px">
+      แสดง 60 รายการแรก จากทั้งหมด ${list.length} รายการ</div>`:'')
+   : `<div class="empty"><b>ไม่มีรายการในระดับนี้</b>
+       ลองเลือกระดับอื่น หรือปรับเกณฑ์ด้านบน</div>`;
+  $$('#planList .row').forEach(el=>el.onclick=()=>openItem(el.dataset.k));
+}
+
+/** วาดแผนจัดซื้อทดแทนลงกระดาษ A4 เพื่อบันทึกเป็นรูปหรือแนบเสนอผู้บริหาร */
+async function planImage(){
+  const {rows,cfg}=planData();
+  const list = S.pgTab==='all' ? rows : rows.filter(x=>x.lv.key===S.pgTab);
+  if(!list.length) return toast('ไม่มีรายการในระดับนี้','bad');
+  busyOn('กำลังสร้างรูปภาพ…');
+  try{
+    await readyFonts();
+    const logo=await loadImg(($('#brandLogo')||{}).src||'');
+    const M=13, W=210, H=297, IW=W-M*2;
+    const per=22, pages=Math.ceil(list.length/per);
+    const lvName=PLAN_LEVEL.find(l=>l.key===S.pgTab);
+    const title='แผนจัดซื้อทดแทนครุภัณฑ์'+(lvName?' · ระดับ'+lvName.name:'');
+    const today=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+    const totalVal=list.reduce((a,x)=>a+(Number(x.it.price)||0),0);
+
+    for(let pg=0; pg<pages; pg++){
+      const {c,g}=newPage(W,H);
+      let y=M;
+      if(logo){ const h=16, w=h*logo.width/logo.height;
+        g.drawImage(logo, M*PX, y*PX, w*PX, h*PX); }
+      const tx=M+(logo?20:0);
+      g.fillStyle='#4E2C82'; font(g,15,600,'Prompt');
+      g.fillText(clip(g,title,(W-M-42-tx)*PX), tx*PX, (y+1)*PX);
+      g.fillStyle='#444'; font(g,9.5,400);
+      g.fillText('หอผู้ป่วยศัลยกรรมอุบัติเหตุชาย ชั้น 10 · โรงพยาบาลมหาราชนครราชสีมา',
+        tx*PX, (y+8)*PX);
+      g.textAlign='right'; font(g,8.5,400);
+      g.fillText('พิมพ์เมื่อ '+today, (W-M)*PX, (y+1)*PX);
+      if(pages>1) g.fillText('หน้า '+(pg+1)+'/'+pages, (W-M)*PX, (y+5.5)*PX);
+      g.textAlign='left';
+      y+=19;
+      g.fillStyle='#6B3FA0'; g.fillRect(M*PX, y*PX, IW*PX, .6*PX); y+=3;
+
+      g.fillStyle='#F1E9FC';
+      roundRect(g, M*PX, y*PX, IW*PX, 9*PX, 2.5*PX); g.fill();
+      g.fillStyle='#4E2C82'; font(g,9.5,600,'Prompt');
+      g.fillText(clip(g,'รวม '+list.length+' รายการ · มูลค่าตามราคาซื้อเดิม '+
+        baht(totalVal)+' บาท · เกณฑ์อายุ '+cfg.lifeMed+'/'+cfg.lifeOff+' ปี',
+        (IW-8)*PX), (M+4)*PX, (y+2)*PX);
+      y+=13;
+
+      const cols=[['ลำดับ',9,'c'],['ชื่อครุภัณฑ์',52,'l'],['หมายเลขครุภัณฑ์',36,'l'],
+                  ['อายุ (ปี)',15,'c'],['ค่าซ่อมสะสม',24,'r'],['ราคาซื้อ',24,'r'],['คะแนน',14,'c']];
+      const sum=cols.reduce((a,c2)=>a+c2[1],0);
+      cols.forEach(c2=>c2[1]=c2[1]/sum*IW);
+      const rowH=8.5, fs=7.6, pad=1.2;
+      const drawRow=(v,fill,bold)=>{
+        let x=M;
+        cols.forEach((col,ci)=>{
+          g.fillStyle=fill; g.fillRect(x*PX,y*PX,col[1]*PX,rowH*PX);
+          g.strokeStyle='#B9A6DB'; g.lineWidth=Math.max(1,.25*PX);
+          g.strokeRect(x*PX,y*PX,col[1]*PX,rowH*PX);
+          g.fillStyle=bold?'#4E2C82':'#111';
+          font(g, fs, bold?600:400, bold?'Prompt':'Sarabun');
+          const t=clip(g,v[ci],(col[1]-pad*2)*PX);
+          const ty=(y+(rowH-fs/2.8346*1.25)/2)*PX;
+          if(col[2]==='c'){ g.textAlign='center'; g.fillText(t,(x+col[1]/2)*PX,ty); }
+          else if(col[2]==='r'){ g.textAlign='right'; g.fillText(t,(x+col[1]-pad)*PX,ty); }
+          else { g.textAlign='left'; g.fillText(t,(x+pad)*PX,ty); }
+          g.textAlign='left'; x+=col[1];
+        });
+        y+=rowH;
+      };
+      drawRow(cols.map(c2=>c2[0]),'#EFE6FB',true);
+      list.slice(pg*per,(pg+1)*per).forEach((x,k)=>{
+        drawRow([ String(pg*per+k+1), x.it.name, x.it.code,
+                  x.age===null?'—':x.age.toFixed(1),
+                  x.fx.sum?baht(x.fx.sum):'—',
+                  x.it.price?baht(x.it.price):'—',
+                  String(x.score) ], (k%2)?'#FBF8FF':'#FFF', false);
+      });
+
+      if(pg===pages-1){
+        y+=4;
+        g.fillStyle='#666'; font(g,8,400);
+        g.fillText(clip(g,'คะแนนคำนวณจากอายุการใช้งานเทียบมาตรฐาน ค่าซ่อมสะสมเทียบราคาซื้อ '+
+          'จำนวนครั้งที่ส่งซ่อม และสถานะปัจจุบัน', IW*PX), M*PX, y*PX);
+      }
+      const blob=await canvasBlob(c);
+      await saveBlob(blob, safeName('แผนจัดซื้อทดแทน '+(lvName?lvName.name:'')+
+        (pages>1?' หน้า'+(pg+1):''))+'.png');
+    }
+  }catch(e){ toast('สร้างรูปไม่สำเร็จ: '+(e.message||e),'bad'); }
+  finally{ busyOff(); }
+}
+
+/* ═════════ เพิ่มครุภัณฑ์ใหม่ ═════════ */
+function openAddItem(){
+  const sts=['มีของ','ถูกยืม','รอซ่อม','ส่งซ่อม','ชำรุด','ไม่พบ'];
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>เพิ่มครุภัณฑ์ใหม่</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="note" style="margin-bottom:16px">รายการที่เพิ่มจะไปต่อท้ายแท็บที่เลือกในชีตทันที
+        และพร้อมใช้ในการตรวจรอบถัดไป อย่าลืมพิมพ์สติกเกอร์ QR ให้ด้วย</div>
+
+      <div class="field"><label>ประเภทครุภัณฑ์</label>
+        <div class="seg" id="adCat">
+          <button type="button" data-v="med" class="on">ทางการแพทย์</button>
+          <button type="button" data-v="off">สำนักงาน</button></div>
+        <div class="note" style="margin-top:6px" id="adCatNote">
+          ครุภัณฑ์ทางการแพทย์จะอยู่ในความรับผิดชอบของพยาบาลวิชาชีพ</div></div>
+
+      <div class="field"><label>ชื่อครุภัณฑ์</label>
+        <input class="inp" id="adName" placeholder="เช่น เครื่องวัดความดันโลหิตอัตโนมัติ"></div>
+      <div class="field"><label>หมายเลขครุภัณฑ์</label>
+        <input class="inp" id="adCode" placeholder="เช่น 6515 001 0001 12">
+        <div class="note" id="adDup" style="margin-top:6px"></div></div>
+      <div class="field"><label>ผู้รับผิดชอบ</label>
+        <select class="inp" id="adOwner">${staffOptions(S.by,'nurse')}</select></div>
+      <div class="field"><label>จุดวาง</label>
+        <input class="inp" id="adLoc" placeholder="เช่น ห้องหัตถการ, ทีม 2"></div>
+      <div class="seg" style="margin-bottom:16px">
+        <div class="field" style="flex:1;margin:0"><label>ราคา (บาท)</label>
+          <input class="inp" id="adPrice" inputmode="decimal" placeholder="เช่น 185000"></div>
+        <div class="field" style="flex:1;margin:0"><label>วันรับมอบ (พ.ศ.)</label>
+          <input class="inp" id="adRecv" placeholder="เช่น 27/09/2568"></div>
+      </div>
+      <div class="field"><label>สถานะเริ่มต้น</label>
+        <select class="inp" id="adStatus">${sts.map(v=>`<option>${v}</option>`).join('')}</select></div>
+      <div class="field"><label>หมายเหตุ</label><textarea id="adNote"></textarea></div>
+      ${pinField()}
+      <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
+        onclick="submitAddItem()">บันทึกเข้าทะเบียน</button>
+    </div>`;
+
+  let cat='med';
+  $$('#adCat button').forEach(b=>b.onclick=()=>{
+    $$('#adCat button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); cat=b.dataset.v;
+    $('#adOwner').innerHTML=staffOptions('', cat==='med'?'nurse':'pn');
+    $('#adCatNote').textContent = cat==='med'
+      ? 'ครุภัณฑ์ทางการแพทย์จะอยู่ในความรับผิดชอบของพยาบาลวิชาชีพ'
+      : 'ครุภัณฑ์สำนักงานจะอยู่ในความรับผิดชอบของ PN และพนักงานช่วยเหลือคนไข้';
+  });
+  window._adCat=()=>cat;
+
+  /* เตือนทันทีถ้าเลขครุภัณฑ์ซ้ำกับที่มีอยู่ */
+  $('#adCode').addEventListener('input',e=>{
+    const v=nk(e.target.value);
+    const box=$('#adDup');
+    if(!v){ box.textContent=''; return; }
+    const hit=S.items.find(i=>nk(i.code)===v);
+    box.innerHTML = hit
+      ? `<span style="color:var(--bad)">เลขนี้มีอยู่แล้ว · ${esc(hit.name)}</span>`
+      : '<span style="color:var(--ok)">ยังไม่มีเลขนี้ในระบบ</span>';
+  });
+  $('#scrim').classList.add('on');
+}
+
+async function submitAddItem(){
+  const cat=window._adCat?window._adCat():'med';
+  const name=$('#adName').value.trim(), code=$('#adCode').value.trim();
+  if(!name) return toast('กรุณาระบุชื่อครุภัณฑ์','bad');
+  if(!code) return toast('กรุณาระบุหมายเลขครุภัณฑ์','bad');
+  if(S.items.some(i=>nk(i.code)===nk(code)))
+    return toast('หมายเลขครุภัณฑ์นี้มีอยู่แล้วในระบบ','bad');
+  if(!grabPin()) return;
+  try{
+    const d=await api('addItem',{cat,name,code,
+      owner:$('#adOwner').value.trim(), loc:$('#adLoc').value.trim(),
+      status:$('#adStatus').value, price:$('#adPrice').value.trim(),
+      recv:$('#adRecv').value.trim(), note:$('#adNote').value.trim(), by:S.by});
+    closeSheet();
+    toast('เพิ่ม '+name+' เข้าทะเบียนแล้ว · กำลังโหลดข้อมูลใหม่','good');
+    await reload();
+    const it=S.items.find(i=>i.cat===cat && nk(i.code)===nk(code));
+    if(it) openItem(key(it));
+  }catch(e){ toast(e.message,'bad'); }
+}
+
 /* ═════════ แก้ไขข้อมูล + อัปโหลดรูป ═════════ */
 /* รายชื่อบุคลากรสำหรับ dropdown — ถ้าชื่อที่บันทึกไว้ไม่อยู่ในชีต จะเติมให้อัตโนมัติ */
 function staffOptions(cur,grp){
@@ -2555,10 +2923,6 @@ function showImageSaver(url, filename){
 }
 
 /* ───── เครื่องมือวาดรูปด้วย Canvas โดยไม่ต้องพึ่งไลบรารีภายนอก ───── */
-const DPI = 150;                 // ความละเอียดงานพิมพ์
-const PX  = DPI / 25.4;          // พิกเซลต่อมิลลิเมตร
-const PT  = PX / 2.8346;         // พิกเซลต่อพอยต์
-
 function newPage(wMM, hMM){
   const c = document.createElement('canvas');
   c.width  = Math.round(wMM * PX);
@@ -2604,7 +2968,7 @@ async function readyFonts(){
   try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
 }
 
-const safeName = t => String(t).replace(/[\/\\?%*:|"<>]/g,'-').trim();
+
 
 /* ═════════ ใบสรุปรายการของผู้รับผิดชอบ ═════════ */
 function openOwnerReport(){
@@ -3332,6 +3696,61 @@ function syncSel(id, val){
   const el=$(id);
   if(el && el.value!==val) el.value=val;
 }
+/* ───── ช่องเซ็นลายเซ็นด้วยนิ้วหรือเมาส์ ───── */
+function sigHTML(id, label, note){
+  return `<div class="field">
+    <label>${esc(label)}</label>
+    <div class="sigbox" id="${id}box">
+      <canvas id="${id}"></canvas>
+      <div class="line"></div>
+      <div class="hint">เซ็นด้วยนิ้วหรือเมาส์ในกรอบนี้</div>
+    </div>
+    <div class="sigbar">
+      <button type="button" class="btn" onclick="sigClear('${id}')">ล้างลายเซ็น</button>
+      <span class="note">${esc(note||'ไม่บังคับ แต่ช่วยเป็นหลักฐานยืนยันได้')}</span>
+    </div></div>`;
+}
+const _sig={};
+function sigInit(id){
+  const c=$('#'+id); if(!c) return;
+  const box=$('#'+id+'box');
+  const ratio=window.devicePixelRatio||1;
+  const w=c.clientWidth||600, h=170;
+  c.width=Math.round(w*ratio); c.height=Math.round(h*ratio);
+  const g=c.getContext('2d');
+  g.scale(ratio,ratio);
+  g.lineWidth=2.2; g.lineCap='round'; g.lineJoin='round'; g.strokeStyle='#1B1226';
+  _sig[id]={c,g,drawn:false};
+  let on=false;
+  const pos=e=>{
+    const r=c.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return {x:t.clientX-r.left, y:t.clientY-r.top};
+  };
+  const start=e=>{ e.preventDefault(); on=true; const p=pos(e);
+    g.beginPath(); g.moveTo(p.x,p.y);
+    _sig[id].drawn=true; if(box) box.classList.add('drawn'); };
+  const move=e=>{ if(!on) return; e.preventDefault(); const p=pos(e);
+    g.lineTo(p.x,p.y); g.stroke(); };
+  const end=()=>{ on=false; };
+  ['pointerdown','touchstart','mousedown'].forEach(t=>c.addEventListener(t,start,{passive:false}));
+  ['pointermove','touchmove','mousemove'].forEach(t=>c.addEventListener(t,move,{passive:false}));
+  ['pointerup','pointerleave','touchend','mouseup','mouseleave']
+    .forEach(t=>c.addEventListener(t,end));
+}
+function sigClear(id){
+  const s2=_sig[id]; if(!s2) return;
+  s2.g.clearRect(0,0,s2.c.width,s2.c.height);
+  s2.drawn=false;
+  const box=$('#'+id+'box'); if(box) box.classList.remove('drawn');
+}
+/* คืนรูปลายเซ็นเป็น base64 ถ้ายังไม่ได้เซ็นจะคืนค่าว่าง */
+function sigData(id){
+  const s2=_sig[id];
+  if(!s2||!s2.drawn) return '';
+  try{ return s2.c.toDataURL('image/png').split(',')[1]; }catch(e){ return ''; }
+}
+
 /* ═════════ แทงจำหน่ายและการเบิกทดแทน ═════════ */
 const REP_STATES = ['ยังไม่ขอเบิก','ขอเบิกแล้ว','ได้รับทดแทนแล้ว','ไม่ขอทดแทน'];
 const repTag = r => r==='ได้รับทดแทนแล้ว' ? 't-ok'
@@ -3342,6 +3761,9 @@ function dispMap(){
 }
 
 $('#dpSel').onchange=e=>{ S.dpTab=e.target.value; renderDisp(); };
+$('#pgSel').onchange=e=>{ S.pgTab=e.target.value; renderPlan(); };
+['#pgLifeMed','#pgLifeOff','#pgCostPct'].forEach(x=>
+  $(x).addEventListener('change',renderPlan));
 $('#dpQ').addEventListener('input',renderDisp);
 
 function renderDisp(){
@@ -3674,7 +4096,13 @@ function renderLoan(){
         :`<div class="thumb"></div>`}
       <div class="mid"><b>${esc(l.name)}</b>
         <span>${esc(l.code)} · ผู้ยืม ${esc(l.who)}${l.place?' · '+esc(l.place):''}
-        ${l.due?' · กำหนดคืน '+esc(l.due):' · ไม่ระบุกำหนดคืน'}</span></div>
+        ${l.due?' · กำหนดคืน '+esc(l.due):' · ไม่ระบุกำหนดคืน'}</span>
+        <span class="meta">
+          ${l.sigOut?'<em class="ok">มีลายเซ็นผู้ยืม</em>':'<em class="dim">ไม่มีลายเซ็นผู้ยืม</em>'}
+          ${l.state==='คืนแล้ว'
+            ? (l.sigBack?'<em class="ok">มีลายเซ็นผู้คืน</em>':'<em class="dim">ไม่มีลายเซ็นผู้คืน</em>')
+            : ''}
+        </span></div>
       ${l.state==='คืนแล้ว'
         ? `<span class="tag t-ok">คืนแล้ว</span>`
         : ov ? `<span class="tag t-bad">เกิน ${daysOver(l)} วัน</span>`
@@ -3749,12 +4177,14 @@ function openLoanForm(k){
         <textarea id="lnWhy" placeholder="เช่น ใช้กับผู้ป่วยที่ย้ายไปห้องผ่าตัด"></textarea></div>
       <div class="field"><label>ผู้ให้ยืม</label>
         <select class="inp" id="lnBy">${staffOptions(S.by)}</select></div>
+      ${sigHTML('sigOut','ลายเซ็นผู้ยืม','ให้ผู้ยืมเซ็นรับของก่อนนำออกจากหน่วยงาน')}
       ${pinField()}
       <button class="btn pri" style="width:100%;justify-content:center;padding:15px"
         onclick="submitLoan('${esc(k)}')">บันทึกการยืม</button>
     </div>`;
   bindDueChips();
   $('#scrim').classList.add('on');
+  setTimeout(()=>sigInit('sigOut'),80);
 }
 
 /* ปุ่มลัดตั้งกำหนดคืน แก้ปัญหาช่องวันที่บนมือถือที่ล้างค่าเองไม่ได้ */
@@ -3787,7 +4217,8 @@ async function submitLoan(k){
     const d=await api('saveLoan',{cat:i.cat,row:i.row,code:i.code,name:i.name,who,
       place:$('#lnPlace').value.trim(), tel:$('#lnTel').value.trim(),
       out:$('#lnOut').value, due:($('#lnDue').disabled?'':$('#lnDue').value),
-      why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim()});
+      why:$('#lnWhy').value.trim(), by:$('#lnBy').value.trim(),
+      sigOut:sigData('sigOut')});
     S.loans=d.loans||S.loans; S.disps=d.disps||S.disps;
   /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
   S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
@@ -3822,6 +4253,16 @@ function openLoanDetail(row){
         ${l.back?`<dt>วันที่คืนจริง</dt><dd>${esc(l.back)} · สภาพ ${esc(l.cond||'ปกติ')}</dd>`:''}
         ${l.got?`<dt>ผู้รับคืน</dt><dd>${esc(l.got)}</dd>`:''}
       </dl>
+      ${(l.sigOut||l.sigBack)?`<div class="hr"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px">
+        ${l.sigOut?`<div><div class="note" style="margin-bottom:6px">ลายเซ็นผู้ยืม ·
+          ${esc(l.who||'')}</div>
+          <img class="sigview" src="${imgUrl(l.sigOut,400)}" alt=""
+            onerror="this.style.display='none'"></div>`:''}
+        ${l.sigBack?`<div><div class="note" style="margin-bottom:6px">ลายเซ็นผู้คืน</div>
+          <img class="sigview" src="${imgUrl(l.sigBack,400)}" alt=""
+            onerror="this.style.display='none'"></div>`:''}
+        </div>`:''}
       ${closed?'':`<div class="hr"></div>
       <div class="field"><label>สภาพเมื่อคืน</label>
         <div class="seg" id="lnSeg">
@@ -3835,6 +4276,7 @@ function openLoanDetail(row){
       <div class="field"><label>ผู้รับคืน</label>
         <select class="inp" id="lnGot">${staffOptions(S.by)}</select></div>
       <div class="field"><label>หมายเหตุ</label><textarea id="lnNote"></textarea></div>
+      ${sigHTML('sigBack','ลายเซ็นผู้คืน','ให้ผู้ที่นำของมาคืนเซ็นยืนยัน')}
       ${pinField()}
       <button class="btn go" style="width:100%;justify-content:center;padding:15px"
         onclick="submitReturn(${row},'${esc(l.cat)}',${it?it.row:0})">บันทึกการรับคืน</button>`}
@@ -3845,6 +4287,7 @@ function openLoanDetail(row){
     b.classList.add('on'); cond=b.dataset.v; });
   window._lnCond=()=>cond;
   $('#scrim').classList.add('on');
+  if(!closed) setTimeout(()=>sigInit('sigBack'),80);
 }
 async function submitReturn(row,cat,itemRow){
   if(!grabPin()) return;
@@ -3852,7 +4295,8 @@ async function submitReturn(row,cat,itemRow){
     const d=await api('closeLoan',{row,cat,itemRow,
       back:$('#lnBack').value, cond:window._lnCond?window._lnCond():'ปกติ',
       loc:$('#lnLoc').value.trim(),
-      got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim()});
+      got:$('#lnGot').value.trim(), note:$('#lnNote').value.trim(),
+      sigBack:sigData('sigBack')});
     S.loans=d.loans||S.loans; S.disps=d.disps||S.disps;
   /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
   S.items.forEach(i=>{ i._s=nz(i.status); i._k=i.cat+'|'+nk(i.code); });
