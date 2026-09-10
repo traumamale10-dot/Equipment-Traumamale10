@@ -473,7 +473,14 @@ select.inp{appearance:none;padding-right:38px;
 .watch>.sub{font-size:14px;color:var(--dim);margin-bottom:14px}
 .wgrp{margin-bottom:16px}
 .wgrp:last-child{margin-bottom:0}
-.wgrp .hd{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.wgrp .hd{display:flex;align-items:center;gap:9px;margin-bottom:10px;cursor:pointer;
+  padding:7px 9px;margin-left:-9px;margin-right:-9px;border-radius:12px;transition:.15s}
+.wgrp .hd:hover{background:var(--surface2)}
+.wgrp .hd .cv{margin-left:auto;display:flex;align-items:center;gap:8px}
+.wgrp .hd .arw{color:var(--dim2);font-size:19px;line-height:1;transition:transform .2s}
+.wgrp.open .hd .arw{transform:rotate(90deg)}
+.wgrp .wgrid{display:none}
+.wgrp.open .wgrid{display:grid}
 .wgrp .hd b{font-family:var(--f-d);font-weight:600;font-size:15px}
 .wgrp .hd .n{font-family:var(--f-d);font-weight:700;font-size:14px;padding:1px 10px;
   border-radius:99px}
@@ -748,8 +755,12 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <div class="card" style="margin-bottom:18px">
       <div class="stat"><span id="ckLabel">ตรวจแล้วเดือนนี้</span><b id="ckDone">0 / 0</b></div>
       <div class="meter"><i id="ckMeter" style="width:0%"></i></div>
-      <div class="field" style="margin:16px 0 0"><label>ผู้ตรวจ</label>
-        <select class="inp" id="inspector" style="max-width:360px"></select></div>
+      <div class="tools" style="margin:16px 0 0">
+        <label class="pickwrap"><span>ผู้ตรวจ</span>
+          <select class="inp" id="inspector"></select></label>
+        <label class="note"><input type="checkbox" id="ckMine" checked>
+          แสดงเฉพาะครุภัณฑ์ของผู้ตรวจ</label>
+      </div>
     </div>
     <div class="tools" style="margin-bottom:16px">
       <label class="pickwrap"><span>แสดงรายการ</span>
@@ -810,6 +821,8 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
         <input class="inp" id="fxQ" placeholder="กรองรายการซ่อมด้วยชื่อครุภัณฑ์หรืออาการ"></label>
     </div>
     <div class="mstat" id="fxStat"></div>
+    <div class="card" id="fxCostCard" style="margin-bottom:16px">
+      <h3>สรุปค่าซ่อม</h3><div id="fxCost"></div></div>
     <div class="tools" style="margin-bottom:18px">
       <label class="pickwrap"><span>แสดงรายการ</span>
         <select class="inp" id="fxSel">
@@ -1010,7 +1023,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-09 · v14';
+const APP_VERSION = '2026-09-09 · v16';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -1025,7 +1038,8 @@ const S = {
   items:[], checks:[], fixes:[], loans:[], disps:[], staff:[], roles:{}, ward:null, month:'',
   filter:'all', ckTab:'todo', fxTab:'open', lnTab:'out', dpTab:'all',
   fxScope:null, lnScope:null, dpScope:null, shown:24, pickShown:36, ckShown:40,
-  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}, served:''
+  sel:new Set(), layout:24, zoom:.6, scanMode:'check', stk:null, ckCache:{}, served:'',
+  watchOpen:{}
 };
 const TH_MONTH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                 'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1083,6 +1097,18 @@ const isBroken = it => stOf(it)===ST.broke || stOf(it)===ST.lost;
 
 const today10 = () => new Date().toISOString().slice(0,10);
 const FIX_OPEN = f => f.state!=='ซ่อมเสร็จ' && f.state!=='ซ่อมไม่ได้';
+/* ค่าใช้จ่ายในการซ่อม รับได้ทั้งตัวเลขและข้อความที่มีเครื่องหมายคั่นหลักพัน */
+const costOf = f => {
+  if(typeof f.cost==='number') return f.cost>0?f.cost:0;
+  const n=parseFloat(String(f.cost||'').replace(/[^\d.]/g,''));
+  return isNaN(n)||n<0 ? 0 : n;
+};
+/* ใช้วันที่รับคืนเป็นหลัก เพราะค่าใช้จ่ายเกิดตอนปิดงาน ถ้าไม่มีให้ใช้วันที่ส่ง */
+const costMonth = f => {
+  const d=String(f.back||f.sent||'');
+  const m=d.match(/(\d{4})-(\d{2})/);
+  return m ? m[1]+'-'+m[2] : '';
+};
 const FIX_TAG  = f => f.state==='ซ่อมเสร็จ' ? 't-ok'
                     : f.state==='ซ่อมไม่ได้' ? 't-bad'
                     : f.state==='รอซ่อมเวลาราชการ' ? 't-warn' : 't-fix';
@@ -1448,11 +1474,13 @@ function apply(d){
   fillSelect('#sOwner',ow,'ทุกผู้รับผิดชอบ');
   fillSelect('#ckOwner',ow,'ทุกผู้รับผิดชอบ');
   fillLookup(); buildMonths();
+  if(S.by) focusInspector(S.by, false);
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
   $('#inspector').innerHTML=staffOptions(S.by);
   renderWard();
   renderAll();
+  applyMine();
 }
 function fillSelect(sel,list,first){
   const el=$(sel),cur=el.value;
@@ -1612,12 +1640,17 @@ function renderAlerts(){
     box.innerHTML=`<div class="watch">
       <h3>ครุภัณฑ์ที่ต้องติดตาม ${total} รายการ</h3>
       <div class="sub">รายการที่ไม่ได้อยู่ในสภาพพร้อมใช้ตามปกติ
-        แตะที่การ์ดเพื่อเปิดรายละเอียด หรือแตะดูทั้งหมดเพื่อไปยังรายการนั้น</div>
-      ${groups.map(g=>`<div class="wgrp">
-        <div class="hd"><b style="color:${g.col}">${esc(g.title)}</b>
+        แตะที่หัวข้อกลุ่มเพื่อกางดูรายการพร้อมรูป</div>
+      ${groups.map(g=>`<div class="wgrp${S.watchOpen[g.key]?' open':''}" data-grp="${g.key}">
+        <div class="hd" data-tog="${g.key}">
+          <span class="arw">›</span>
+          <b style="color:${g.col}">${esc(g.title)}</b>
           <span class="n" style="background:${g.bg};color:${g.col}">${g.n}</span>
-          <button class="btn" data-go="${g.key}"
-            style="margin-left:auto;padding:6px 13px;font-size:14px">ดูทั้งหมด</button></div>
+          <span class="cv">
+            <span class="note" style="font-size:13px">${
+              S.watchOpen[g.key]?'ซ่อนรายการ':'แตะเพื่อดูรายการ'}</span>
+            <button class="btn" data-go="${g.key}"
+              style="padding:6px 13px;font-size:14px">ดูทั้งหมด</button></span></div>
         <div class="wgrid">${g.cards.slice(0,WMAX).join('')}
           ${g.n>WMAX?`<button class="btn wmore" data-go="${g.key}">และอีก ${
             g.n-WMAX} รายการ</button>`:''}</div>
@@ -1625,6 +1658,13 @@ function renderAlerts(){
 
     $$('#alerts .wcard').forEach(el=>{
       if(el.dataset.k) el.onclick=()=>openItem(el.dataset.k);
+    });
+    /* พับเก็บหรือกางรายการของแต่ละกลุ่ม จำสถานะไว้จนกว่าจะปิดแอป */
+    $$('#alerts [data-tog]').forEach(el=>el.onclick=ev=>{
+      if(ev.target.closest('[data-go]')) return;
+      const k=el.dataset.tog;
+      S.watchOpen[k]=!S.watchOpen[k];
+      renderAlerts();
     });
     $$('#alerts [data-go]').forEach(el=>{
       const g=groups.filter(x=>x.key===el.dataset.go)[0];
@@ -2168,10 +2208,15 @@ function openItem(k){
           isGone(i)?'ข้อมูลแทงจำหน่าย':'แทงจำหน่าย'}</button>
       </div>
       <h3 style="font-family:var(--f-d);font-size:15px;color:var(--plum);margin:0 0 14px">ประวัติส่งซ่อม</h3>
+      ${(()=>{const c=fixes.reduce((a,f)=>a+costOf(f),0);
+        return c?`<div class="note" style="margin:-6px 0 12px">ค่าซ่อมสะสม
+          <b style="color:var(--plum)">${baht(c)}</b> บาท จาก ${fixes.length} ครั้ง${
+          i.price?` · คิดเป็น ${Math.round(c/i.price*100)}% ของราคาซื้อ`:''}</div>`:'';})()}
       ${fixes.length?`<div class="tl">${fixes.map(f=>`
         <div class="e"><time>${esc(f.sent||f.at.slice(0,10))} · ${esc(f.state)}</time>
         ${esc(f.issue||'—')}${f.to?` · ส่งที่ ${esc(f.to)}`:''}
-        ${f.result?`<br><span style="color:var(--dim)">ผล: ${esc(f.result)}</span>`:''}</div>`).join('')}</div>`
+        ${f.result?`<br><span style="color:var(--dim)">ผล: ${esc(f.result)}</span>`:''}
+        ${costOf(f)?`<br><span style="color:var(--plum)">ค่าซ่อม ${baht(costOf(f))} บาท</span>`:''}</div>`).join('')}</div>`
         :'<div class="note">ยังไม่มีประวัติส่งซ่อม</div>'}
     </div>`;
   $('#scrim').classList.add('on');
@@ -3054,10 +3099,30 @@ function checkMeta(c){
 /* ═════════ หน้าตรวจ ═════════ */
 $('#ckSel').onchange=e=>{ S.ckTab=e.target.value; S.ckShown=40; renderCheck(); };
 ['#ckQ','#ckOwner','#ckCat'].forEach(sel=>
-  $(sel).addEventListener('input',()=>{S.ckShown=40;renderCheck();}));
+  $(sel).addEventListener('input',()=>{
+    if(sel==='#ckOwner' && $('#ckMine') && $('#ckOwner').value!==S.by)
+      $('#ckMine').checked=false;
+    S.ckShown=40; renderCheck();
+  }));
+/* เลือกผู้ตรวจแล้วให้กรองเหลือเฉพาะครุภัณฑ์ในความรับผิดชอบของคนนั้น
+   ปลดติ๊กได้ถ้าต้องตรวจแทนคนอื่นหรือดูภาพรวมทั้งหน่วยงาน */
+function applyMine(){
+  if(!$('#ckMine')) return;
+  if($('#ckMine').checked && S.by){
+    const ok=Array.from($('#ckOwner').options).some(o=>o.value===S.by);
+    $('#ckOwner').value = ok ? S.by : '';
+    if(!ok && S.by) toast('ยังไม่มีครุภัณฑ์ในความรับผิดชอบของ '+S.by,'bad');
+  }
+  S.ckShown=40; renderCheck();
+}
 $('#inspector').addEventListener('change',e=>{
   S.by=e.target.value.trim(); store.set('kp.by',S.by);
+  applyMine();
   if(S.by) toast('ผู้ตรวจ: '+S.by,'good');
+});
+$('#ckMine').addEventListener('change',e=>{
+  if(!e.target.checked) $('#ckOwner').value='';
+  applyMine();
 });
 function renderCheck(){
   const cm=checkMap();
@@ -3076,8 +3141,10 @@ function renderCheck(){
 
   $('#checkSub').textContent=`รอบ ${thMonth(S.month)} · สแกน QR บนสติ๊กเกอร์ `+
     `หรือค้นหาจากชื่อครุภัณฑ์และผู้รับผิดชอบด้านล่าง`;
-  $('#ckLabel').textContent = filtered
-    ? 'ตรวจแล้วเดือนนี้ (เฉพาะที่กรองไว้)' : 'ตรวจแล้วเดือนนี้ (ทั้งหน่วยงาน)';
+  $('#ckLabel').textContent = ow
+    ? 'ตรวจแล้วเดือนนี้ · เฉพาะของ ' + ow
+    : filtered ? 'ตรวจแล้วเดือนนี้ (เฉพาะที่กรองไว้)'
+               : 'ตรวจแล้วเดือนนี้ (ทั้งหน่วยงาน)';
   $('#ckDone').textContent=`${done.length} / ${scope.length}`;
   $('#ckMeter').style.width=p+'%';
 
@@ -3825,6 +3892,8 @@ function renderFix(){
   ], S.fxTab, t=>{ S.fxTab=t; renderFix(); });
   syncSel('#fxSel',S.fxTab);
 
+  renderFixCost(mkF);
+
   $('#fixSub').innerHTML=`รอบ ${thMonth(mkF)} · ยังไม่ปิดงาน <b style="color:var(--plum)">${open.length}</b> รายการ`+
     (wait.length?` · <b style="color:var(--warn)">รอซ่อมเวลาราชการ ${wait.length} รายการ</b>`:'')+
     (FX_LABEL[S.fxTab]?`<br>กำลังแสดง <b style="color:var(--plum)">${FX_LABEL[S.fxTab]}</b> `+
@@ -3845,6 +3914,82 @@ function renderFix(){
    : `<div class="empty"><b>ไม่มีรายการ${FX_LABEL[S.fxTab]?'ในหมวด '+FX_LABEL[S.fxTab]:''}</b>
        สแกน QR หรือกดเลือกจากรายการเพื่อแจ้งซ่อม</div>`;
   $$('#fixList .row').forEach(el=>el.onclick=()=>openFixDetail(+el.dataset.r));
+}
+
+function renderFixCost(mk){
+  const box=$('#fxCost'); if(!box) return;
+  const paid=S.fixes.filter(f=>costOf(f)>0);
+  if(!paid.length){
+    box.innerHTML='<div class="note">ยังไม่มีการบันทึกค่าใช้จ่ายในการซ่อม<br>'+
+      'กรอกได้ตอนปิดงานซ่อมในช่องค่าใช้จ่าย</div>';
+    return;
+  }
+
+  /* ยอดรวมรายเดือน ย้อนหลัง 6 เดือนจากเดือนที่เลือก */
+  const [yy,mm]=mk.split('-').map(Number);
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(yy, mm-1-i, 1);
+    months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  const byMonth={};
+  paid.forEach(f=>{ const k=costMonth(f); if(k) byMonth[k]=(byMonth[k]||0)+costOf(f); });
+  const maxM=Math.max(1,...months.map(k=>byMonth[k]||0));
+
+  /* ยอดสะสมรายครุภัณฑ์ */
+  const byItem={};
+  paid.forEach(f=>{
+    const k=f.cat+'|'+nk(f.code);
+    if(!byItem[k]) byItem[k]={name:f.name,code:f.code,cat:f.cat,sum:0,n:0};
+    byItem[k].sum+=costOf(f); byItem[k].n++;
+  });
+  const top=Object.values(byItem).sort((a,b)=>b.sum-a.sum).slice(0,6);
+  const total=paid.reduce((a,f)=>a+costOf(f),0);
+  const thisM=byMonth[mk]||0;
+  const thisY=Object.entries(byMonth)
+    .filter(([k])=>k.startsWith(String(yy)))
+    .reduce((a,[,v])=>a+v,0);
+
+  box.innerHTML=`
+    <div class="mstat" style="margin-bottom:14px">
+      <button style="cursor:default"><b style="color:var(--plum)">${baht(thisM)}</b>
+        <span>ค่าซ่อมรอบ ${thMonth(mk)}</span></button>
+      <button style="cursor:default"><b style="color:var(--warn)">${baht(thisY)}</b>
+        <span>รวมปี ${yy+543}</span></button>
+      <button style="cursor:default"><b style="color:var(--ink)">${baht(total)}</b>
+        <span>รวมทั้งหมด ${paid.length} ครั้ง</span></button>
+    </div>
+
+    <div style="font-family:var(--f-d);font-weight:600;font-size:14.5px;color:var(--dim);
+      margin:6px 0 10px">ค่าซ่อมย้อนหลัง 6 เดือน</div>
+    ${months.map(k=>{
+      const v=byMonth[k]||0;
+      return `<div style="margin-bottom:9px">
+        <div class="stat" style="border:0;padding:1px 0">
+          <span style="font-size:14px">${thMonth(k)}</span>
+          <b style="font-size:15px;color:${v?'var(--plum)':'var(--dim2)'}">${
+            v?baht(v):'—'}</b></div>
+        <div class="meter"><i style="width:${Math.round(v/maxM*100)}%"></i></div></div>`;
+    }).join('')}
+
+    <div class="hr" style="margin:14px 0"></div>
+    <div style="font-family:var(--f-d);font-weight:600;font-size:14.5px;color:var(--dim);
+      margin-bottom:10px">ครุภัณฑ์ที่มีค่าซ่อมสะสมสูงสุด</div>
+    <div class="rank">${top.map((t,i)=>`
+      <div class="r" data-c="${esc(t.cat)}" data-x="${esc(t.code)}">
+        <em>${i+1}</em>
+        <span class="nm">${esc(t.name)}<br>
+          <span style="color:var(--dim2);font-size:13px">${esc(t.code)} · ซ่อม ${t.n} ครั้ง</span></span>
+        <b>${baht(t.sum)}</b>
+        <div class="bw"><i style="width:${Math.round(t.sum/top[0].sum*100)}%"></i></div>
+      </div>`).join('')}</div>
+    <div class="note" style="margin-top:10px">ครุภัณฑ์ที่ค่าซ่อมสะสมสูงเทียบกับราคาซื้อ
+      ควรพิจารณาแทงจำหน่ายและขอเบิกทดแทนแทนการซ่อมต่อ</div>`;
+
+  $$('#fxCost .rank .r').forEach(el=>el.onclick=()=>{
+    const it=S.items.find(i=>i.cat===el.dataset.c && nk(i.code)===nk(el.dataset.x));
+    if(it) openItem(key(it));
+  });
 }
 
 /* สแกนแล้วพาไปยังฟอร์มแจ้งซ่อมหรือหน้างานซ่อมที่ค้างอยู่ */
