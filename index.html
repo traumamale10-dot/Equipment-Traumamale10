@@ -82,6 +82,7 @@ a{color:var(--plum);text-underline-offset:3px}
   border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15)}
 .iconbtn svg{width:18px;height:18px}
 .wrap{display:flex;min-height:calc(100vh - 60px)}
+.railwrap{display:contents}
 nav.rail{width:var(--rail);flex:none;padding:18px 0;display:flex;flex-direction:column;gap:6px;
   align-items:center;position:sticky;top:60px;height:calc(100vh - 60px);
   border-right:1px solid var(--line);background:rgba(255,255,255,.5)}
@@ -444,7 +445,7 @@ select.inp{appearance:none;padding-right:38px;
 
 @media (max-width:900px){
   body{font-size:16px}
-  main{padding:18px 15px 108px}
+  main{padding:18px 15px 120px}
   .bar{flex-wrap:wrap;padding:8px 13px;gap:8px}
   .brand{flex:1 1 100%}
   .brand .logo{width:32px;height:32px}
@@ -456,14 +457,26 @@ select.inp{appearance:none;padding-right:38px;
   .pill{font-size:13px;padding:6px 12px}
   .iconbtn{width:34px;height:34px}
   .wrap{min-height:auto}
-  nav.rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;flex-direction:row;
-    justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));
-    border-right:0;border-top:1px solid var(--line);background:rgba(255,255,255,.97);
-    backdrop-filter:blur(16px);z-index:70;box-shadow:0 -4px 20px rgba(76,44,124,.07)}
-  nav.rail button{width:auto;flex:1;padding:7px 1px;font-size:10px;border-radius:12px;gap:4px}
-  nav.rail button svg{width:19px;height:19px}
-  nav.rail .badge{top:1px;right:calc(50% - 20px);min-width:17px;height:17px;line-height:17px;
-    font-size:10px}
+  /* เมนูล่างบนมือถือ เลื่อนซ้ายขวาได้ ปุ่มจึงใหญ่พออ่านและกดถนัด
+     ไม่ต้องบีบทุกปุ่มให้พอดีจอเมื่อเมนูเพิ่มขึ้น */
+  nav.rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;
+    flex-direction:row;justify-content:flex-start;align-items:stretch;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px;
+    border-right:0;border-top:1px solid var(--line);background:rgba(255,255,255,.98);
+    z-index:70;box-shadow:0 -4px 20px rgba(76,44,124,.09);
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;scrollbar-width:none}
+  nav.rail::-webkit-scrollbar{display:none}
+  nav.rail button{width:auto;flex:0 0 auto;min-width:76px;padding:9px 12px 8px;
+    font-size:12px;border-radius:15px;gap:5px;scroll-snap-align:center}
+  nav.rail button svg{width:23px;height:23px}
+  nav.rail .badge{top:3px;right:9px;min-width:19px;height:19px;line-height:19px;
+    font-size:11px}
+  /* ไล่สีจางที่ขอบขวา บอกว่ายังเลื่อนดูต่อได้ */
+  .railwrap{position:relative}
+  .railwrap::after{content:'';position:fixed;right:0;bottom:0;width:26px;
+    height:calc(58px + env(safe-area-inset-bottom));z-index:71;pointer-events:none;
+    background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.97))}
   h2.vt{font-size:23px} p.vs{font-size:14.5px;margin-bottom:18px}
         .vitals{gap:18px} .vitals b{font-size:23px}   .card{padding:18px}
   .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -641,7 +654,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 </header>
 
 <div class="wrap">
-<nav class="rail" id="rail"></nav>
+<div class="railwrap"><nav class="rail" id="rail"></nav></div>
 <main>
 
   <section class="view on" id="v-dash">
@@ -1080,7 +1093,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-09 · v21';
+const APP_VERSION = '2026-09-09 · v22';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -1332,7 +1345,12 @@ function openSetup(){
 }
 
 function go(v){
-  $$('#rail button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $$('#rail button').forEach(b=>{
+    const on=b.dataset.v===v;
+    b.classList.toggle('on',on);
+    if(on && b.scrollIntoView)
+      try{ b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'}); }catch(e){}
+  });
   $$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
   window.scrollTo({top:0});
   if(v==='sticker'){ renderPick(); fitZoom(); }
