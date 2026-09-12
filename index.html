@@ -99,6 +99,7 @@ a{color:var(--plum);text-underline-offset:3px}
 .iconbtn:hover{background:rgba(255,255,255,.24)}
 .iconbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .iconbtn svg{width:18px;height:18px}
+.mobile-more{display:none}
 .wrap{display:flex;min-height:calc(100vh - 60px)}
 .railwrap{display:contents}
 .scanfab{display:none}
@@ -111,8 +112,7 @@ nav.rail button{width:68px;padding:11px 0 9px;border-radius:12px;display:grid;ga
 nav.rail button:focus-visible{outline:2px solid var(--plum);outline-offset:2px}
 nav.rail button svg{width:23px;height:23px}
 nav.rail button:hover{color:var(--plum);background:var(--lav-soft)}
-nav.rail button.on{color:#fff;background:linear-gradient(150deg,var(--plum),var(--lav));
-  box-shadow:0 8px 20px rgba(107,63,160,.3)}
+nav.rail button.on{color:#fff;background:var(--plum)}
 main{flex:1;min-width:0;padding:26px 30px 110px}
 .view{display:none;animation:fade .3s both}
 .view.on{display:block}
@@ -472,8 +472,8 @@ select.inp{appearance:none;padding-right:38px;
   main{padding:18px 15px 120px}
   .bar{flex-wrap:wrap;padding:8px 13px;gap:8px}
   .brand{flex:1}
-  .gsearch{order:3;flex:1 1 100%;max-width:none;padding:9px 13px}
-  .gsearch kbd{display:none}
+  /* มือถือ: เอาช่องค้นหาด้านบนออก เพื่อให้หัวจอกระชับ */
+  .gsearch{display:none}
   .brand{flex:1 1 100%}
   .brand .logo{width:32px;height:32px}
   .brand .txt span{font-size:10.5px}
@@ -481,31 +481,30 @@ select.inp{appearance:none;padding-right:38px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .ctl{flex:1 1 100%;justify-content:space-between;gap:7px}
   .ctl .mini{flex:1;font-size:13px;padding:6px 28px 6px 11px}
+  .ctl .mobile-more{display:grid;flex:none}
   .pill{font-size:13px;padding:6px 12px}
   .iconbtn{width:34px;height:34px}
   .wrap{min-height:auto}
   /* เมนูล่างบนมือถือ เลื่อนซ้ายขวาได้ ปุ่มจึงใหญ่พออ่านและกดถนัด
      ไม่ต้องบีบทุกปุ่มให้พอดีจอเมื่อเมนูเพิ่มขึ้น */
   nav.rail{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;
-    flex-direction:row;justify-content:flex-start;align-items:stretch;
-    padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px;
+    display:grid;grid-template-columns:1fr 1fr 58px 1fr 1fr;align-items:end;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:4px;
     border-right:0;border-top:1px solid var(--line);background:rgba(255,255,255,.98);
     z-index:70;box-shadow:0 -4px 20px rgba(76,44,124,.09);
-    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
-    scroll-snap-type:x proximity;scrollbar-width:none}
-  nav.rail::-webkit-scrollbar{display:none}
-  nav.rail button{width:auto;flex:1 1 0;min-width:0;padding:9px 4px 8px;
-    font-size:11.5px;border-radius:12px;gap:5px}
-  /* บนมือถือแสดงเฉพาะ 4 เมนูหลัก ที่เหลือเข้าจากช่องค้นหา */
+    overflow:visible}
+  nav.rail button{width:100%;min-width:0;padding:7px 1px 6px;
+    font-size:10.5px;border-radius:10px;gap:3px}
+  /* บนมือถือแสดงเฉพาะ 4 เมนูหลัก ที่เหลือเปิดจากปุ่มสามขีดด้านบน */
   nav.rail button[data-v]:not(.mob){display:none}
-  /* ปุ่มสแกนตรงกลาง ยกสูงขึ้นให้เด่นและกดง่าย */
-  nav.rail .scanfab{display:grid;flex:0 0 auto;width:60px;height:60px;margin:-22px 4px 0;
+  /* ปุ่มสแกนล็อกไว้คอลัมน์กลาง เพื่อให้กึ่งกลางจอสมดุลเสมอ */
+  nav.rail .scanfab{display:grid;width:54px;height:54px;margin:-18px auto 0;
     border-radius:50%;background:var(--plum);color:#fff;justify-items:center;align-content:center;
-    gap:2px;font-size:10.5px;font-family:var(--f-d);font-weight:500;
+    gap:1px;font-size:9.5px;font-family:var(--f-d);font-weight:500;
     box-shadow:0 4px 14px rgba(91,62,158,.4);border:3px solid var(--surface)}
-  nav.rail .scanfab svg{width:23px;height:23px}
+  nav.rail .scanfab svg{width:20px;height:20px}
   nav.rail .scanfab:active{transform:scale(.94)}
-  nav.rail button svg{width:23px;height:23px}
+  nav.rail button svg{width:20px;height:20px}
   nav.rail .badge{top:3px;right:9px;min-width:19px;height:19px;line-height:19px;
     font-size:11px}
 
@@ -682,6 +681,10 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <kbd>Ctrl K</kbd>
   </button>
   <div class="ctl">
+    <button class="iconbtn mobile-more" onclick="openMobileMenu()" aria-label="เปิดเมนูอื่นๆ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+        stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
     <select id="monthSel" class="mini" aria-label="เลือกรอบเดือน"></select>
     <span class="dot">
       <button class="iconbtn" onclick="openNotif()" aria-label="การแจ้งเตือน">
@@ -1166,7 +1169,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-12 · v25';
+const APP_VERSION = '2026-09-12 · v26';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -1395,7 +1398,7 @@ const NAV=[
    1. เติม ?setup=1 ต่อท้าย URL   2. แตะที่โลโก้โรงพยาบาลติดกัน 5 ครั้ง */
 
 /* บนมือถือแสดงเพียง 4 เมนูนี้ พร้อมปุ่มสแกนตรงกลาง
-   เมนูที่เหลือเข้าถึงได้จากช่องค้นหาบนหัวจอ */
+   เมนูที่เหลือเข้าถึงได้จากปุ่มสามขีดข้างตัวเลือกเดือน */
 const MOBILE_NAV=['dash','stock','check','loan'];
 const SCAN_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'+
   ' stroke-linecap="round" stroke-linejoin="round">'+
@@ -2732,6 +2735,30 @@ async function planImage(){
 }
 
 /* ═════════ ค้นหาทั่วระบบ · แจ้งเตือน · ผู้ใช้งาน ═════════ */
+
+/* เมนูเพิ่มเติมสำหรับมือถือ — ไม่รวมหน้าตั้งค่า */
+function openMobileMenu(){
+  const extra=NAV.filter(([id])=>!MOBILE_NAV.includes(id));
+  $('#sheet').innerHTML=`
+    <div class="hd"><h4>เมนูอื่นๆ</h4>
+      <button class="x" onclick="closeSheet()">✕</button></div>
+    <div class="bd">
+      <div class="rows" id="mobileMoreList">
+        ${extra.map(([id,lb,d])=>`<button class="row" data-go="${id}">
+          <div class="thumb" style="display:grid;place-items:center;background:var(--lav-soft)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+              stroke-linecap="round" stroke-linejoin="round"
+              style="width:22px;height:22px;color:var(--plum)"><path d="${d}"/></svg></div>
+          <div class="mid"><b>${esc(lb)}</b><span>เปิดเมนู</span></div>
+          <span style="color:var(--dim2);font-size:20px;line-height:1">›</span>
+        </button>`).join('')}
+      </div>
+    </div>`;
+  $$('#mobileMoreList .row[data-go]').forEach(el=>el.onclick=()=>{
+    const v=el.dataset.go; closeSheet(); go(v);
+  });
+  $('#scrim').classList.add('on');
+}
 
 function openSearch(){
   $('#sheet').innerHTML=`
