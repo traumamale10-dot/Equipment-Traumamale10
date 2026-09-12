@@ -479,11 +479,11 @@ select.inp{appearance:none;padding-right:38px;
   .brand .txt span{font-size:10.5px}
   .brand .txt b{font-size:14.5px;white-space:normal;line-height:1.3;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  .ctl{flex:1 1 100%;justify-content:space-between;gap:7px}
-  .ctl .mini{flex:1;font-size:13px;padding:6px 28px 6px 11px}
+  .ctl{flex:1 1 100%;justify-content:space-between;gap:5px;min-width:0}
+  .ctl .mini{flex:1 1 0;min-width:0;width:0;font-size:13px;padding:6px 25px 6px 9px}
   .ctl .mobile-more{display:grid;flex:none}
-  .pill{font-size:13px;padding:6px 12px}
-  .iconbtn{width:34px;height:34px}
+  .pill{font-size:12.5px;padding:6px 8px;flex:none}
+  .iconbtn{width:34px;height:34px;flex:none}
   .wrap{min-height:auto}
   /* เมนูล่างบนมือถือ เลื่อนซ้ายขวาได้ ปุ่มจึงใหญ่พออ่านและกดถนัด
      ไม่ต้องบีบทุกปุ่มให้พอดีจอเมื่อเมนูเพิ่มขึ้น */
@@ -661,6 +661,103 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
   .zoomBox{transform:none!important}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
+
+
+/* ══════════ MOBILE FIX · วางแผนจัดซื้อทดแทนเท่านั้น ══════════ */
+@media (max-width:900px){
+  /* เกณฑ์คำนวณ: ให้ข้อความ/ช่องกรอกเรียงลงและไม่ดันออกนอกจอ */
+  #v-plan > .card .tools{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  #v-plan > .card .tools > label.note{
+    width:100%;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+    line-height:1.55;
+    min-width:0;
+  }
+  #v-plan > .card .tools > label.note .inp{
+    flex:0 0 auto;
+    max-width:100%;
+  }
+  #v-plan > .card .tools > .btn{
+    width:100%;
+    justify-content:center;
+  }
+
+  /* ข้อความอธิบายและสรุปงบประมาณให้ตัดบรรทัดตามความกว้างจอ */
+  #v-plan .note,
+  #v-plan #planSub,
+  #v-plan #pgBudget .stat span,
+  #v-plan #pgBudget .stat b{
+    overflow-wrap:anywhere;
+    word-break:normal;
+    min-width:0;
+  }
+  #v-plan #pgBudget .stat{
+    flex-wrap:wrap;
+    align-items:flex-start;
+    gap:4px 10px;
+  }
+  #v-plan #pgBudget .stat > b{
+    width:100%;
+    text-align:left;
+  }
+
+  /* ตัวกรองด้านล่าง: เรียงลง ไม่ตกขอบ */
+  #v-plan > .tools{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  #v-plan > .tools .pickwrap,
+  #v-plan > .tools .pickwrap > select,
+  #v-plan > .tools > .btn{
+    width:100%;
+    min-width:0;
+  }
+  #v-plan > .tools > .btn{
+    justify-content:center;
+  }
+
+  /* รายการแผนซื้อ: ให้รายละเอียดและป้ายคะแนนเรียงลงอย่างสมดุล */
+  #v-plan #planList .row{
+    align-items:flex-start;
+    flex-wrap:wrap;
+    min-width:0;
+  }
+  #v-plan #planList .row .mid{
+    flex:1 1 calc(100% - 68px);
+    min-width:0;
+  }
+  #v-plan #planList .row .mid > b,
+  #v-plan #planList .row .mid > span{
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  #v-plan #planList .row > div:last-child{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    text-align:left !important;
+    padding-left:67px;
+    min-width:0;
+  }
+  #v-plan #planList .row > div:last-child .tag{
+    white-space:normal;
+    text-align:left;
+  }
+  #v-plan #planList .row > div:last-child > div{
+    margin-top:0 !important;
+    flex:none;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -716,8 +813,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <div id="conn"><b>เชื่อมต่อฐานข้อมูลไม่สำเร็จ</b>
       <span id="connMsg"></span>
       <div style="margin-top:12px;display:flex;gap:9px;flex-wrap:wrap">
-        <button class="btn" onclick="reload()">ลองใหม่</button>
-        <button class="btn" onclick="openSetup()">ไปหน้าตั้งค่า</button></div></div>
+        <button class="btn" onclick="reload()">ลองใหม่</button></div></div>
     <div id="alerts"></div>
 
     <div class="hero">
@@ -1394,8 +1490,7 @@ const NAV=[
   ['plan','วางแผนซื้อ','M4 19V9m5 10V5m5 14v-7m5 7V8M3 21h18'],
   ['sticker','สติ๊กเกอร์','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM19 19h2v2h-2z'],
 ];
-/* หน้าตั้งค่าไม่แสดงในเมนู เข้าถึงได้สองทาง
-   1. เติม ?setup=1 ต่อท้าย URL   2. แตะที่โลโก้โรงพยาบาลติดกัน 5 ครั้ง */
+/* หน้าตั้งค่าระบบถูกซ่อนจากส่วนติดต่อผู้ใช้ */
 
 /* บนมือถือแสดงเพียง 4 เมนูนี้ พร้อมปุ่มสแกนตรงกลาง
    เมนูที่เหลือเข้าถึงได้จากปุ่มสามขีดข้างตัวเลือกเดือน */
@@ -1418,23 +1513,9 @@ $('#rail').innerHTML=NAV.map(([id,lb,d],i)=>{
 $$('#rail button[data-v]').forEach(b=>b.onclick=()=>go(b.dataset.v));
 $$('#rail button[data-scan]').forEach(b=>b.onclick=()=>openScan('item'));
 
-/* ทางลับเข้าหน้าตั้งค่า สำหรับผู้ดูแลระบบเท่านั้น */
-let _tap=0, _tapT=null;
-function bindSetupGate(){
-  const logo=$('#brandLogo'); if(!logo) return;
-  logo.style.cursor='pointer';
-  logo.addEventListener('click',()=>{
-    _tap++;
-    clearTimeout(_tapT);
-    _tapT=setTimeout(()=>{_tap=0;},1200);
-    if(_tap>=5){ _tap=0; openSetup(); }
-  });
-}
-function openSetup(){
-  document.querySelector('#v-setup').dataset.on='1';
-  go('setup');
-  toast('เข้าสู่หน้าตั้งค่า สำหรับผู้ดูแลระบบ','good');
-}
+/* ซ่อนหน้าตั้งค่าระบบจากการเรียกใช้งานบนหน้าเว็บ */
+function bindSetupGate(){}
+function openSetup(){ return; }
 
 function go(v){
   $$('#rail button').forEach(b=>{
@@ -2776,8 +2857,7 @@ function openSearch(){
   setTimeout(()=>{ const el=$('#gsQ'); if(el) el.focus(); },90);
 }
 /* เมนูที่ค้นหาได้ รวมหน้าที่ไม่ได้แสดงบนแถบเมนูมือถือด้วย */
-const GS_PAGES=NAV.concat([['setup','ตั้งค่า',
-  'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2m12 0h2M12 4v2m0 12v2']]);
+const GS_PAGES=NAV;
 
 function gsRender(){
   const q=$('#gsQ').value.trim().toLowerCase();
@@ -2823,7 +2903,7 @@ function gsRender(){
   $$('#gsList .row[data-go]').forEach(el=>el.onclick=()=>{
     const v=el.dataset.go;
     closeSheet();
-    if(v==='setup') openSetup(); else go(v);
+    if(v!=='setup' && v!=='setup-hidden') go(v);
   });
 }
 
@@ -2939,7 +3019,6 @@ function openUser(){
         <div class="note" style="margin-top:6px">ใช้เป็นชื่อผู้ตรวจและผู้บันทึกในทุกหน้า</div></div>
       <div class="tools">
         <button class="btn" onclick="closeSheet();reload()">ดึงข้อมูลใหม่</button>
-        <button class="btn" onclick="closeSheet();openSetup()">ตั้งค่าระบบ</button>
       </div>
     </div>`;
   $('#usrBy').addEventListener('change',e=>{
@@ -4085,7 +4164,7 @@ function loanByCode(code){
 /* เปิดจากลิงก์ใน QR โดยตรง เช่น ?k=med.12 หรือ ?c=6515... */
 function handleDeepLink(){
   const p=new URLSearchParams(location.search);
-  if(p.get('setup')==='1'){ openSetup(); return; }
+  if(p.get('setup')==='1'){ p.delete('setup'); }
   const c=p.get('c'), k=p.get('k'), act=p.get('a');
   if(!c&&!k) return;
   const it = k ? resolveScan(location.href) : resolveScan(c);
