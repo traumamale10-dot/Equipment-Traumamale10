@@ -909,20 +909,35 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <div class="card" style="margin-bottom:16px">
       <h3>เกณฑ์ที่ใช้คำนวณ</h3>
       <div class="tools">
-        <label class="note">อายุใช้งานมาตรฐาน · การแพทย์
+        <label class="note">ผู้ป่วยต่อเดือน
+          <input class="inp" id="pgPatients" type="number" min="0" max="2000" value="19"
+                 style="width:86px;padding:8px 10px;margin:0 6px"> ราย</label>
+        <label class="note">ขั้นต่ำที่ต้องมี · กลุ่มช่วยชีวิต
+          <input class="inp" id="pgMinLife" type="number" min="1" max="20" value="2"
+                 style="width:76px;padding:8px 10px;margin:0 6px"> เครื่อง</label>
+        <label class="note">กลุ่มอื่น
+          <input class="inp" id="pgMinGen" type="number" min="1" max="20" value="1"
+                 style="width:76px;padding:8px 10px;margin:0 6px"> เครื่อง</label>
+      </div>
+      <div class="tools" style="margin-top:10px">
+        <label class="note">อายุมาตรฐาน · การแพทย์
           <input class="inp" id="pgLifeMed" type="number" min="1" max="30" value="8"
-                 style="width:80px;padding:8px 10px;margin:0 6px"> ปี</label>
+                 style="width:76px;padding:8px 10px;margin:0 6px"> ปี</label>
         <label class="note">สำนักงาน
           <input class="inp" id="pgLifeOff" type="number" min="1" max="30" value="10"
-                 style="width:80px;padding:8px 10px;margin:0 6px"> ปี</label>
+                 style="width:76px;padding:8px 10px;margin:0 6px"> ปี</label>
         <label class="note">ค่าซ่อมสะสมเกิน
           <input class="inp" id="pgCostPct" type="number" min="10" max="200" step="5" value="50"
-                 style="width:80px;padding:8px 10px;margin:0 6px"> % ของราคาซื้อ ถือว่าไม่คุ้ม</label>
+                 style="width:76px;padding:8px 10px;margin:0 6px"> % ถือว่าไม่คุ้ม</label>
         <button class="btn" onclick="renderPlan()">คำนวณใหม่</button>
       </div>
-      <div class="note" style="margin-top:10px">
-        ปรับตัวเลขให้ตรงกับเกณฑ์ของหน่วยงานได้ ระบบจะจัดลำดับใหม่ทันที
-        การคำนวณทำในเครื่อง ไม่ส่งข้อมูลออกไปที่ใด</div>
+      <div class="note" style="margin-top:12px">
+        <b>น้ำหนักคะแนน</b> ความสำคัญต่อการรักษา 25 · ความพร้อมใช้ของกลุ่ม 20 ·
+        ปริมาณการใช้งาน 15 · อายุการใช้งาน 15 · ค่าซ่อมสะสม 10 · ประวัติการซ่อม 10 ·
+        สถานะปัจจุบัน 5<br>
+        ครุภัณฑ์ชื่อเดียวกันถือเป็นกลุ่มเดียวกัน ระบบจะดูว่ายังมีเครื่องสำรองใช้งานได้หรือไม่
+        ของที่เก่าแต่ยังมีเครื่องอื่นสำรองอยู่ จะไม่ถูกจัดเป็นเร่งด่วน<br>
+        การคำนวณทำในเครื่องทั้งหมด ไม่ส่งข้อมูลออกนอกระบบ</div>
     </div>
 
     <div class="mstat" id="pgStat"></div>
@@ -931,9 +946,9 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
     <div class="tools" style="margin-bottom:16px">
       <label class="pickwrap"><span>แสดงรายการ</span>
         <select class="inp" id="pgSel">
-          <option value="urgent">เร่งด่วน</option>
-          <option value="year">ควรทดแทนปีนี้</option>
-          <option value="watch">เฝ้าระวัง</option>
+          <option value="urgent">🔴 เร่งด่วน (70-100)</option>
+          <option value="buy">🟠 ควรจัดซื้อ (50-69)</option>
+          <option value="plan">🟡 วางแผน (30-49)</option>
           <option value="all">ทั้งหมดที่มีคะแนน</option>
         </select></label>
       <button class="btn" onclick="planImage()">บันทึกเป็นรูปภาพ</button>
@@ -1093,7 +1108,7 @@ nav.rail button.on .badge{background:#fff;color:var(--plum)}
 
 <script>
 /* ═════════ ค่าเริ่มต้น ═════════ */
-const APP_VERSION = '2026-09-09 · v22';
+const APP_VERSION = '2026-09-12 · v23';
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyCzQyy2VmFQwi9UNtqVZ_vFhnxeg_1VuNPhFj2JlWVoFBBhfDqGwfZ3MiF6bCFerrp/exec';
 const mem = {};
 const store = {
@@ -2308,124 +2323,237 @@ function openItem(k){
 }
 
 /* ═════════ วิเคราะห์เพื่อวางแผนจัดซื้อทดแทน ═════════
-   ให้คะแนนความจำเป็นจากข้อมูลที่ระบบเก็บไว้จริง 5 ด้าน
-   คำนวณในเครื่องทั้งหมด ไม่ส่งข้อมูลออกนอกระบบ                          */
+   ให้คะแนนแบบหลายเกณฑ์ถ่วงน้ำหนัก รวม 100 คะแนน
+     ความสำคัญต่อการรักษา   25
+     ความพร้อมใช้ของกลุ่ม   20
+     ปริมาณการใช้งาน        15
+     อายุการใช้งาน          15
+     ค่าซ่อมสะสม            10
+     ประวัติการซ่อม         10
+     สถานะปัจจุบัน           5
+   คำนวณในเครื่องทั้งหมด ไม่ส่งข้อมูลออกนอกระบบ                             */
+
 const PLAN_LEVEL = [
-  { key:'urgent', min:70, name:'เร่งด่วน',        col:'var(--bad)',  bg:'var(--bad-bg)' },
-  { key:'year',   min:50, name:'ควรทดแทนปีนี้',  col:'var(--warn)', bg:'var(--warn-bg)' },
-  { key:'watch',  min:30, name:'เฝ้าระวัง',      col:'var(--plum)', bg:'var(--lav-soft)' },
-  { key:'ok',     min:0,  name:'ยังใช้ได้',      col:'var(--ok)',   bg:'var(--ok-bg)' }
+  { key:'urgent', min:70, name:'เร่งด่วน',   icon:'🔴', col:'var(--bad)',  bg:'var(--bad-bg)' },
+  { key:'buy',    min:50, name:'ควรจัดซื้อ', icon:'🟠', col:'#D97A2B',     bg:'#FDF0E4' },
+  { key:'plan',   min:30, name:'วางแผน',     icon:'🟡', col:'var(--warn)', bg:'var(--warn-bg)' },
+  { key:'ok',     min:0,  name:'ปกติ',       icon:'🟢', col:'var(--ok)',   bg:'var(--ok-bg)' }
 ];
 
-function planScore(it, cfg, fxByItem, disp){
-  const r=[];                       /* เหตุผลประกอบคะแนน */
-  let sc=0;
+/* จัดระดับความสำคัญจากชื่อครุภัณฑ์ แก้คำในลิสต์นี้ได้ตามบริบทของหน่วยงาน */
+const CRIT_LIFE = ['ช่วยหายใจ','ventilat','กระตุกหัวใจ','defib','ดูดเสมหะ','suction',
+  'นับหยด','infusion','syringe pump','ออกซิเจน','oxygen','regulator','อุ่นเลือด',
+  'blood warmer','ใส่ท่อ','laryngoscope','ambu','ช่วยฟื้นคืนชีพ','central monitor',
+  'ติดตามสัญญาณชีพ','มอนิเตอร์','monitor'];
+const CRIT_DIAG = ['วัดความดัน','คลื่นหัวใจ','ekg','ultrasound','u/s','doppler','hct',
+  'ฮีมาโตคริต','ปั่น','อิ่มตัวของออกซิเจน','oximeter','กระเพาะปัสสาวะ','bladder',
+  'เครื่องชั่ง','อุณหภูมิ','thermometer','วัดน้ำตาล','glucose','รักษาแผล','สุญญากาศ'];
+
+function critOf(it){
+  const n=String(it.name||'').toLowerCase();
+  if(it.cat!=='med') return {lv:'low',  name:'สนับสนุน',  pt:25*0.25, col:'var(--dim)'};
+  if(CRIT_LIFE.some(k=>n.includes(k)))
+    return {lv:'life', name:'ช่วยชีวิต', pt:25,      col:'var(--bad)'};
+  if(CRIT_DIAG.some(k=>n.includes(k)))
+    return {lv:'diag', name:'วินิจฉัย',  pt:25*0.6,  col:'var(--warn)'};
+  return {lv:'gen', name:'การแพทย์ทั่วไป', pt:25*0.4, col:'var(--plum)'};
+}
+
+/* ครุภัณฑ์ชื่อเดียวกันถือเป็นกลุ่มเดียวกัน ใช้ดูว่ามีเครื่องสำรองหรือไม่ */
+const grpKey = it => nz(it.name);
+
+function buildGroups(){
+  const g={};
+  S.items.forEach(it=>{
+    const k=grpKey(it);
+    if(!g[k]) g[k]={name:it.name, total:0, usable:0, down:0, lent:0, gone:0, items:[]};
+    const e=g[k];
+    e.total++; e.items.push(it);
+    if(isGone(it)) e.gone++;
+    else if(stOf(it)===ST.lend){ e.lent++; }
+    else if(isBroken(it) || stOf(it)===ST.fix || stOf(it)===ST.wait) e.down++;
+    else e.usable++;
+  });
+  return g;
+}
+
+function planCfg(){
+  return {
+    lifeMed : Math.max(1, +$('#pgLifeMed').value || 8),
+    lifeOff : Math.max(1, +$('#pgLifeOff').value || 10),
+    costPct : Math.max(10, +$('#pgCostPct').value || 50),
+    patients: Math.max(0, +$('#pgPatients').value || 0),
+    minLife : Math.max(1, +$('#pgMinLife').value || 2),
+    minGen  : Math.max(1, +$('#pgMinGen').value || 1)
+  };
+}
+
+function planScore(it, cfg, grp, fxByItem, disp, loanBy){
+  const R=[];                       /* เหตุผลที่อธิบายคะแนนได้ */
+  const crit=critOf(it);
+  const g=grp[grpKey(it)] || {total:1, usable:0, down:1, lent:0, gone:0};
+
+  /* 1) ความสำคัญต่อการรักษา 25 */
+  let sc=crit.pt;
+  R.push('ระดับความสำคัญ '+crit.name);
+
+  /* 2) ความพร้อมใช้ของกลุ่ม 20 */
+  const need = crit.lv==='life' ? cfg.minLife : cfg.minGen;
+  const backup = g.usable - need;          /* เหลือสำรองกี่เครื่อง */
+  let avPt=0;
+  if(g.usable===0){ avPt=20; R.push(`ไม่เหลือเครื่องใช้งานได้เลย จากทั้งหมด ${g.total} เครื่อง`); }
+  else if(backup<0){ avPt=17;
+    R.push(`ใช้งานได้ ${g.usable} เครื่อง น้อยกว่าขั้นต่ำที่ควรมี ${need} เครื่อง`); }
+  else if(backup===0){ avPt=12;
+    R.push(`ใช้งานได้ ${g.usable} เครื่อง พอดีขั้นต่ำ ไม่มีเครื่องสำรอง`); }
+  else { avPt=Math.max(0, 6-backup*2);
+    R.push(`ใช้งานได้ ${g.usable} จาก ${g.total} เครื่อง มีสำรอง ${backup} เครื่อง`); }
+  if(g.down>0 && g.usable>0) R.push(`ในกลุ่มมีเครื่องใช้ไม่ได้ ${g.down} เครื่อง`);
+  sc+=avPt;
+
+  /* 3) ปริมาณการใช้งาน 15 */
+  let utilTxt='—', utPt=0;
+  const lend12 = loanBy[ck(it)] || 0;
+  if(cfg.patients>0 && g.usable>0){
+    const load=cfg.patients/g.usable;            /* ผู้ป่วยต่อเครื่องต่อเดือน */
+    utPt=Math.min(12, Math.round(load/10*12));
+    utilTxt=Math.round(load)+' ราย/เครื่อง/เดือน';
+    R.push(`ภาระใช้งาน ${utilTxt} (ผู้ป่วย ${cfg.patients} ราย/เดือน ต่อเครื่องใช้ได้ ${g.usable})`);
+  } else if(cfg.patients>0 && g.usable===0){
+    utPt=15; utilTxt='ไม่มีเครื่องรองรับ';
+    R.push(`ผู้ป่วย ${cfg.patients} ราย/เดือน แต่ไม่มีเครื่องใช้งานได้`);
+  }
+  if(lend12>0){ utPt=Math.min(15, utPt+Math.min(3,lend12));
+    R.push(`ถูกยืมใช้งาน ${lend12} ครั้ง`); }
+  sc+=utPt;
+
+  /* 4) อายุการใช้งาน 15 */
   const life = it.cat==='med' ? cfg.lifeMed : cfg.lifeOff;
   const age  = ageOf(it.recv);
-
   if(age!==null){
-    const ratio=age/life;
-    const pt=Math.min(40, Math.round(ratio*32));
-    if(pt>0){ sc+=pt;
-      r.push(ratio>=1
-        ? `ใช้งานมาแล้ว ${age.toFixed(1)} ปี เกินอายุมาตรฐาน ${life} ปี`
-        : `ใช้งานมาแล้ว ${age.toFixed(1)} ปี จากมาตรฐาน ${life} ปี`); }
-  } else {
-    sc+=5; r.push('ยังไม่ได้บันทึกวันรับมอบ จึงประเมินอายุไม่ได้');
-  }
-
-  const fx=fxByItem[ck(it)]||{sum:0,n:0,cant:false};
-  if(fx.sum>0 && it.price>0){
-    const pct=fx.sum/it.price*100;
-    const pt=Math.min(30, Math.round(pct/cfg.costPct*30));
+    const pt=Math.min(15, Math.round(age/life*12));
     sc+=pt;
-    r.push(`ค่าซ่อมสะสม ${baht(fx.sum)} บาท คิดเป็น ${Math.round(pct)}% ของราคาซื้อ`);
-  } else if(fx.sum>0){
-    sc+=10; r.push(`ค่าซ่อมสะสม ${baht(fx.sum)} บาท (ยังไม่ได้บันทึกราคาซื้อ)`);
-  }
-  if(fx.n>=2){ const pt=Math.min(15,(fx.n-1)*5); sc+=pt;
-    r.push(`ส่งซ่อมมาแล้ว ${fx.n} ครั้ง`); }
-  if(fx.cant){ sc+=25; r.push('มีผลการซ่อมว่าซ่อมไม่ได้'); }
+    R.push(age>=life
+      ? `อายุ ${age.toFixed(1)} ปี เกินมาตรฐาน ${life} ปี มาแล้ว ${(age-life).toFixed(1)} ปี`
+      : `อายุ ${age.toFixed(1)} ปี จากมาตรฐาน ${life} ปี`);
+  } else { sc+=3; R.push('ยังไม่ได้บันทึกวันรับมอบ'); }
 
-  if(isBroken(it)){ sc+=25; r.push('สถานะปัจจุบันคือ '+it.status); }
+  /* 5) ค่าซ่อมสะสม 10 */
+  const fx=fxByItem[ck(it)] || {sum:0,n:0,cant:false,n12:0};
+  let costPct=null;
+  if(fx.sum>0 && it.price>0){
+    costPct=fx.sum/it.price*100;
+    sc+=Math.min(10, Math.round(costPct/cfg.costPct*10));
+    R.push(`ค่าซ่อมสะสม ${baht(fx.sum)} บาท คิดเป็น ${Math.round(costPct)}% ของราคาซื้อ`);
+  } else if(fx.sum>0){ sc+=4; R.push(`ค่าซ่อมสะสม ${baht(fx.sum)} บาท`); }
+
+  /* 6) ประวัติการซ่อม 10 */
+  if(fx.n12>=2){ sc+=Math.min(10, fx.n12*3);
+    R.push(`ซ่อม ${fx.n12} ครั้งในรอบ 12 เดือน`); }
+  else if(fx.n>=2){ sc+=4; R.push(`ส่งซ่อมมาแล้ว ${fx.n} ครั้ง`); }
+  if(fx.cant){ sc+=8; R.push('เคยมีผลการซ่อมว่าซ่อมไม่ได้'); }
+
+  /* 7) สถานะปัจจุบัน 5 */
+  if(isBroken(it)){ sc+=5; R.push('สถานะปัจจุบันคือ '+it.status); }
   if(isGone(it)){
     const d=disp[ck(it)];
-    if(!d || d.rep==='ยังไม่ขอเบิก'){ sc+=30; r.push('แทงจำหน่ายแล้วแต่ยังไม่ได้ขอเบิกทดแทน'); }
-    else if(d.rep==='ขอเบิกแล้ว'){ sc+=10; r.push('ขอเบิกทดแทนแล้ว อยู่ระหว่างรอรับ'); }
-    else { sc=0; r.length=0; r.push('ได้รับทดแทนแล้ว'); }
+    if(!d || d.rep==='ยังไม่ขอเบิก'){ sc+=5; R.push('แทงจำหน่ายแล้วแต่ยังไม่ได้ขอเบิกทดแทน'); }
+    else if(d.rep==='ขอเบิกแล้ว'){ R.push('ขอเบิกทดแทนแล้ว อยู่ระหว่างรอรับ'); sc=Math.min(sc,45); }
+    else { return { score:0, reasons:['ได้รับทดแทนแล้ว'], crit, g, backup, utilTxt, age, life,
+                    fx, costPct, lv:PLAN_LEVEL[PLAN_LEVEL.length-1] }; }
   }
-  return { score:Math.min(100,sc), reasons:r, age, life, fx };
+
+  const score=Math.max(0, Math.min(100, Math.round(sc)));
+  return { score, reasons:R, crit, g, backup, utilTxt, age, life, fx, costPct,
+           lv:PLAN_LEVEL.find(l=>score>=l.min) };
 }
 
 function planData(){
-  const cfg={
-    lifeMed:Math.max(1,+$('#pgLifeMed').value||8),
-    lifeOff:Math.max(1,+$('#pgLifeOff').value||10),
-    costPct:Math.max(10,+$('#pgCostPct').value||50)
-  };
+  const cfg=planCfg();
+  const grp=buildGroups();
+  const yearAgo=new Date(Date.now()-365*86400000).toISOString().slice(0,10);
+
   const fxByItem={};
   S.fixes.forEach(f=>{
     const k=f.cat+'|'+nk(f.code);
-    if(!fxByItem[k]) fxByItem[k]={sum:0,n:0,cant:false};
+    if(!fxByItem[k]) fxByItem[k]={sum:0,n:0,n12:0,cant:false};
     fxByItem[k].sum+=costOf(f); fxByItem[k].n++;
+    if(String(f.sent||'')>=yearAgo) fxByItem[k].n12++;
     if(f.state==='ซ่อมไม่ได้') fxByItem[k].cant=true;
+  });
+  const loanBy={};
+  S.loans.forEach(l=>{
+    if(String(l.out||'')<yearAgo) return;
+    const k=l.cat+'|'+nk(l.code);
+    loanBy[k]=(loanBy[k]||0)+1;
   });
   const disp=dispMap();
 
   const rows=S.items.map(it=>{
-    const r=planScore(it,cfg,fxByItem,disp);
-    const lv=PLAN_LEVEL.find(l=>r.score>=l.min);
-    return {it, ...r, lv};
+    const r=planScore(it,cfg,grp,fxByItem,disp,loanBy);
+    return {it, ...r};
   }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
-  return {rows, cfg};
+  return {rows, cfg, grp};
 }
 
 function renderPlan(){
   if(!$('#planList')) return;
   const {rows,cfg}=planData();
   const by=k=>rows.filter(x=>x.lv.key===k);
-  const urgent=by('urgent'), year=by('year'), watch=by('watch');
+  const urgent=by('urgent'), buy=by('buy'), plan=by('plan');
 
   mstat('#pgStat',[
-    ['เร่งด่วน', urgent.length, 'var(--bad)','urgent'],
-    ['ควรทดแทนปีนี้', year.length, 'var(--warn)','year'],
-    ['เฝ้าระวัง', watch.length, 'var(--plum)','watch'],
+    ['🔴 เร่งด่วน', urgent.length, 'var(--bad)','urgent'],
+    ['🟠 ควรจัดซื้อ', buy.length, '#D97A2B','buy'],
+    ['🟡 วางแผน', plan.length, 'var(--warn)','plan'],
     ['รวมที่มีคะแนน', rows.length, 'var(--dim)','all']
   ], S.pgTab, t=>{ S.pgTab=t; renderPlan(); });
   syncSel('#pgSel', S.pgTab);
 
   const sum=list=>list.reduce((a,x)=>a+(Number(x.it.price)||0),0);
-  const noPrice=list=>list.filter(x=>!Number(x.it.price)).length;
-  const bd=[['เร่งด่วน',urgent,'var(--bad)'],['ควรทดแทนปีนี้',year,'var(--warn)'],
-            ['เฝ้าระวัง',watch,'var(--plum)']];
+  const noPrice=rows.filter(x=>!Number(x.it.price)).length;
   $('#pgBudget').innerHTML = rows.length
-    ? bd.map(([lb,list,col])=>`<div class="stat">
+    ? [['🔴 เร่งด่วน',urgent,'var(--bad)'],['🟠 ควรจัดซื้อ',buy,'#D97A2B'],
+       ['🟡 วางแผน',plan,'var(--warn)']].map(([lb,list,col])=>`<div class="stat">
         <span>${lb} <span style="color:var(--dim2)">${list.length} รายการ</span></span>
         <b style="color:${col}">${baht(sum(list))} บาท</b></div>`).join('')
-      + `<div class="stat"><span><b>รวมเร่งด่วนและควรทดแทนปีนี้</b></span>
-          <b style="color:var(--plum);font-size:20px">${baht(sum(urgent)+sum(year))} บาท</b></div>`
+      + `<div class="stat"><span><b>รวมเร่งด่วนและควรจัดซื้อ</b></span>
+          <b style="color:var(--plum);font-size:20px">${baht(sum(urgent)+sum(buy))} บาท</b></div>`
       + `<div class="note" style="margin-top:10px">ประมาณจากราคาซื้อเดิม
-          ราคาจริงในการจัดซื้อใหม่มักสูงกว่านี้${
-          noPrice(rows)?` · ยังไม่ได้บันทึกราคาซื้อ ${noPrice(rows)} รายการ จึงยังไม่ถูกนับรวม`:''}</div>`
+          ราคาจัดซื้อใหม่มักสูงกว่านี้${
+          noPrice?` · ยังไม่ได้บันทึกราคาซื้อ ${noPrice} รายการ`:''}</div>`
     : '<div class="note">ยังไม่มีรายการที่เข้าเกณฑ์ต้องทดแทน</div>';
 
   const list = S.pgTab==='all' ? rows : by(S.pgTab);
-  $('#planSub').innerHTML=`จัดลำดับจากอายุการใช้งาน ค่าซ่อมสะสม จำนวนครั้งที่ซ่อม `+
-    `และสถานะปัจจุบัน · เกณฑ์อายุ ${cfg.lifeMed} ปี (การแพทย์) และ ${cfg.lifeOff} ปี (สำนักงาน)`;
+  $('#planSub').innerHTML='คิดคะแนนจากความสำคัญต่อการรักษา ความพร้อมใช้ของกลุ่ม '+
+    'ปริมาณการใช้งาน อายุ ค่าซ่อม และประวัติการซ่อม'+
+    (cfg.patients?` · อ้างอิงผู้ป่วย ${cfg.patients} ราย/เดือน`
+                 :' · ยังไม่ได้ระบุจำนวนผู้ป่วย จึงยังไม่คิดคะแนนปริมาณการใช้งาน');
 
-  $('#planList').innerHTML = list.length ? list.slice(0,60).map((x,i)=>{
+  $('#planList').innerHTML = list.length ? list.slice(0,60).map(x=>{
     const u=imgUrl(x.it.img,180);
+    const bk = x.g.usable===0 ? 'ไม่มีเครื่องใช้ได้'
+             : x.backup>0 ? 'มีสำรอง '+x.backup+' เครื่อง'
+             : x.backup===0 ? 'ไม่มีสำรอง' : 'ต่ำกว่าขั้นต่ำ';
     return `<button class="row" data-k="${esc(key(x.it))}">
       ${u?`<img class="thumb" loading="lazy" src="${u}" alt="" onerror="this.style.visibility='hidden'">`
         :`<div class="thumb"></div>`}
       <div class="mid"><b>${esc(x.it.name)}</b>
         <span>${esc(x.it.code)} · ${esc(x.it.owner||'—')}${
           x.it.price?' · ราคาซื้อ '+baht(x.it.price)+' บาท':''}</span>
-        <span class="meta">${x.reasons.map(r=>`<em>${esc(r)}</em>`).join('')}</span>
+        <span class="meta">
+          <em style="color:${x.crit.col}">${esc(x.crit.name)}</em>
+          <em class="${x.backup>0?'ok':'bad'}">${esc(bk)}</em>
+          <em>ใช้งาน ${esc(x.utilTxt)}</em>
+          <em class="dim">${x.age===null?'ไม่ทราบอายุ':'อายุ '+x.age.toFixed(1)+' ปี'}</em>
+          ${x.costPct!==null?`<em class="dim">ค่าซ่อม ${Math.round(x.costPct)}%</em>`:''}
+        </span>
+        <span class="meta">${x.reasons.slice(1).map(r=>`<em class="dim">${esc(r)}</em>`).join('')}</span>
         <div class="meter" style="margin-top:7px">
           <i style="width:${x.score}%;background:${x.lv.col}"></i></div></div>
       <div style="text-align:right;flex:none">
-        <span class="tag" style="background:${x.lv.bg};color:${x.lv.col}">${x.lv.name}</span>
+        <span class="tag" style="background:${x.lv.bg};color:${x.lv.col}">${
+          x.lv.icon} ${x.lv.name}</span>
         <div style="font-family:var(--f-d);font-weight:700;font-size:19px;color:${x.lv.col};
           margin-top:5px">${x.score}</div></div></button>`;
   }).join('') + (list.length>60?`<div class="note" style="margin-top:10px">
@@ -2477,11 +2605,12 @@ async function planImage(){
         (IW-8)*PX), (M+4)*PX, (y+2)*PX);
       y+=13;
 
-      const cols=[['ลำดับ',9,'c'],['ชื่อครุภัณฑ์',52,'l'],['หมายเลขครุภัณฑ์',36,'l'],
-                  ['อายุ (ปี)',15,'c'],['ค่าซ่อมสะสม',24,'r'],['ราคาซื้อ',24,'r'],['คะแนน',14,'c']];
+      const cols=[['ลำดับ',8,'c'],['ชื่อครุภัณฑ์',44,'l'],['หมายเลขครุภัณฑ์',32,'l'],
+                  ['ความสำคัญ',20,'c'],['เครื่องสำรอง',20,'c'],['ภาระใช้งาน',22,'c'],
+                  ['อายุ (ปี)',13,'c'],['ค่าซ่อม',13,'c'],['ราคาซื้อ',22,'r'],['คะแนน',12,'c']];
       const sum=cols.reduce((a,c2)=>a+c2[1],0);
       cols.forEach(c2=>c2[1]=c2[1]/sum*IW);
-      const rowH=8.5, fs=7.6, pad=1.2;
+      const rowH=8.5, fs=6.9, pad=1.0;
       const drawRow=(v,fill,bold)=>{
         let x=M;
         cols.forEach((col,ci)=>{
@@ -2501,18 +2630,26 @@ async function planImage(){
       };
       drawRow(cols.map(c2=>c2[0]),'#EFE6FB',true);
       list.slice(pg*per,(pg+1)*per).forEach((x,k)=>{
+        const bk = x.g.usable===0 ? 'ไม่มีใช้ได้'
+                 : x.backup>0 ? 'สำรอง '+x.backup
+                 : x.backup===0 ? 'ไม่มีสำรอง' : 'ต่ำกว่าขั้นต่ำ';
         drawRow([ String(pg*per+k+1), x.it.name, x.it.code,
+                  x.crit.name, bk, x.utilTxt,
                   x.age===null?'—':x.age.toFixed(1),
-                  x.fx.sum?baht(x.fx.sum):'—',
+                  x.costPct!==null?Math.round(x.costPct)+'%':'—',
                   x.it.price?baht(x.it.price):'—',
                   String(x.score) ], (k%2)?'#FBF8FF':'#FFF', false);
       });
 
       if(pg===pages-1){
         y+=4;
-        g.fillStyle='#666'; font(g,8,400);
-        g.fillText(clip(g,'คะแนนคำนวณจากอายุการใช้งานเทียบมาตรฐาน ค่าซ่อมสะสมเทียบราคาซื้อ '+
-          'จำนวนครั้งที่ส่งซ่อม และสถานะปัจจุบัน', IW*PX), M*PX, y*PX);
+        g.fillStyle='#666'; font(g,7.5,400);
+        ['คะแนนเต็ม 100 ถ่วงน้ำหนักจาก ความสำคัญต่อการรักษา 25 · ความพร้อมใช้ของกลุ่ม 20 · '+
+         'ปริมาณการใช้งาน 15 · อายุการใช้งาน 15 · ค่าซ่อมสะสม 10 · ประวัติการซ่อม 10 · สถานะ 5',
+         'ครุภัณฑ์ชื่อเดียวกันนับเป็นกลุ่มเดียวกัน รายการที่ยังมีเครื่องสำรองใช้งานได้ '+
+         'จะไม่ถูกจัดเป็นเร่งด่วนแม้อายุจะเกินมาตรฐาน',
+         'ระดับ 70-100 เร่งด่วน · 50-69 ควรจัดซื้อ · 30-49 วางแผน · 0-29 ปกติ'
+        ].forEach(t=>{ g.fillText(clip(g,t,IW*PX), M*PX, y*PX); y+=4; });
       }
       const blob=await canvasBlob(c);
       await saveBlob(blob, safeName('แผนจัดซื้อทดแทน '+(lvName?lvName.name:'')+
@@ -3780,8 +3917,8 @@ function dispMap(){
 
 $('#dpSel').onchange=e=>{ S.dpTab=e.target.value; renderDisp(); };
 $('#pgSel').onchange=e=>{ S.pgTab=e.target.value; renderPlan(); };
-['#pgLifeMed','#pgLifeOff','#pgCostPct'].forEach(x=>
-  $(x).addEventListener('change',renderPlan));
+['#pgLifeMed','#pgLifeOff','#pgCostPct','#pgPatients','#pgMinLife','#pgMinGen']
+  .forEach(x=>$(x).addEventListener('change',renderPlan));
 $('#dpQ').addEventListener('input',renderDisp);
 
 function renderDisp(){
