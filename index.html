@@ -3989,6 +3989,7 @@ async function submitCheck(){
 
   const payload=[{cat:i.cat,row:i.row,code:i.code,ref:i.ref,name:i.name,
     result:ckState.result,note:$('#ckNote').value.trim(),loc:$('#ckLoc').value.trim()}];
+  const saveStarted=Date.now();
   try{
     const d=await api('saveCheck',{items:JSON.stringify(payload),month:S.month,by,
       how:ckState.how||'สแกน QR',
@@ -4001,7 +4002,31 @@ async function submitCheck(){
     toast('บันทึกผลการตรวจ '+i.code+' แล้ว'+
       (d.verdict&&d.verdict!=='ไม่ได้ระบุตำแหน่ง'?' · '+d.verdict:''),'good');
   }catch(e){
-    toast(e.message,'bad');
+    /* บางเบราว์เซอร์อาจไม่ได้รับ response กลับ แม้ Apps Script บันทึกสำเร็จแล้ว
+       ห้ามยิง save ซ้ำอีก ให้ตรวจจาก Firestore/Sheets ก่อนแล้วค่อยสรุปผล */
+    let verified=null;
+    try{
+      let ck=null;
+      try{ ck=await jsonp({action:'checksFb',month:S.month}); }
+      catch(_){ ck=await jsonp({action:'checks',month:S.month}); }
+      const rows=(ck&&ck.checks)||[];
+      verified=rows.find(c=>{
+        if(String(c.code||'').trim()!==String(i.code||'').trim()) return false;
+        if(String(c.by||'').trim()!==String(by||'').trim()) return false;
+        const t=Date.parse(c.at||'');
+        return !isNaN(t) && t >= saveStarted-120000;
+      })||null;
+      if(verified){
+        S.checks=rows;
+        S.ckCache[S.month]=rows;
+        if(ckState.result!=='ปกติ') i.status=ckState.result;
+        if($('#ckLoc').value.trim()) i.loc=$('#ckLoc').value.trim();
+        closeSheet(); renderAll();
+        toast('บันทึกผลการตรวจ '+i.code+' แล้ว','good');
+        return;
+      }
+    }catch(_verifyErr){}
+    toast('ยังยืนยันการบันทึกไม่ได้ กรุณาตรวจรายการล่าสุดก่อนกดซ้ำ','bad');
     if(btn){ btn.disabled=false; btn.style.opacity=1; }
   }
 }
