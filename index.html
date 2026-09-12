@@ -1554,12 +1554,13 @@ async function speedTest(){
     L.push('ตอบกลับจากเซิร์ฟเวอร์ '+Math.round(performance.now()-t0)+' ms');
 
     const t1=performance.now();
-    const b=await jsonp({action:'bootstrap',month:S.month});
+    let b,src='Firestore';
+    try{ b=await jsonp({action:'bootstrapFb',month:S.month}); }
+    catch(_){ src='Google Sheets'; b=await jsonp({action:'bootstrap',month:S.month}); }
     const ms=Math.round(performance.now()-t1);
     const kb=Math.round(JSON.stringify(b).length/1024);
-    L.push('ดึงข้อมูลทั้งหมด '+ms+' ms · ขนาด '+kb+' KB · '+b.items.length+' รายการ');
-    L.push(ms<1200?'ใช้ข้อมูลที่พักไว้ในเซิร์ฟเวอร์ (เร็ว)'
-                  :'อ่านจากชีตใหม่ (ช้ากว่าปกติ ครั้งถัดไปจะเร็วขึ้น)');
+    L.push('ดึงข้อมูลทั้งหมดจาก '+src+' '+ms+' ms · ขนาด '+kb+' KB · '+b.items.length+' รายการ');
+    L.push(src==='Firestore'?'โหลดฐานข้อมูล Firestore สำเร็จ':'กำลังใช้ Google Sheets สำรอง');
 
     const snap=store.get('kp.snap');
     L.push('ข้อมูลสำรองในเครื่อง '+(snap?Math.round(snap.length/1024)+' KB':'ยังไม่มี'));
@@ -1646,6 +1647,29 @@ async function rebuildIndex(){
   catch(e){ toast(e.message,'bad'); }
 }
 
+/* โหลดหน้าแรกจาก Firestore ก่อน เพื่อไม่ต้องรออ่าน Google Sheets ทั้งก้อน
+   ถ้า Firestore/คำสั่งรุ่นใหม่มีปัญหา จะถอยกลับไป bootstrap เดิมอัตโนมัติ */
+async function loadBootstrapWithRetry(month){
+  const m=month||'';
+  try{
+    const d=await jsonp({action:'bootstrapFb',month:m});
+    if(d&&d.ok) return d;
+  }catch(_fbErr){
+    /* fallback ด้านล่าง — เว็บเดิมยังใช้งานได้แม้ Firestore มีปัญหา */
+  }
+
+  let lastErr;
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      return await jsonp({action:'bootstrap',month:m});
+    }catch(e){
+      lastErr=e;
+      if(attempt===0) await new Promise(r=>setTimeout(r,900));
+    }
+  }
+  throw lastErr;
+}
+
 async function boot(){
   $('#setUrl').value=S.api; $('#setBase').value=S.base;
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
@@ -1656,12 +1680,12 @@ async function boot(){
   /* แสดงข้อมูลที่เก็บไว้ในเครื่องก่อน ผู้ใช้จะได้ไม่ต้องรอ */
   const snap=readSnap();
   if(snap){
-    try{ apply(snap.d);
+    try{ apply(snap.d,true);
          $('#dashSub').textContent+=' · กำลังอัปเดตข้อมูลล่าสุด…'; }catch(e){}
   }
   try{
-    const d=await jsonp({action:'bootstrap',month:S.month||''});
-    apply(d); saveSnap(d);
+    const d=await loadBootstrapWithRetry(S.month||'');
+    apply(d,true); saveSnap(d);
     S.served=d.served||'';
     $('#conn').classList.remove('on'); $('#led').className='led ok';
     handleDeepLink();
@@ -1677,7 +1701,7 @@ async function boot(){
 function saveSnap(d){
   try{ store.set('kp.snap', JSON.stringify({at:Date.now(), d:d})); }catch(e){}
 }
-const SNAP_MAX_HOURS = 12;   /* ข้อมูลสำรองที่เก่ากว่านี้จะไม่ถูกนำมาแสดง */
+const SNAP_MAX_HOURS = 168;  /* เก็บ snapshot 7 วัน เพื่อให้เปิดหน้าแรกเห็นข้อมูลทันที แล้วค่อยอัปเดตล่าสุดเบื้องหลัง */
 function readSnap(){
   try{
     const raw=store.get('kp.snap'); if(!raw) return null;
@@ -1717,7 +1741,7 @@ async function reload(){
   }catch(e){ toast(e.message,'bad'); showConn(e.message); }
   finally{ busyOff(); }
 }
-function apply(d){
+function apply(d,fastFirstPaint=false){
   S.items=d.items; S.checks=d.checks; S.fixes=d.fixes; S.month=d.month;
   S.loans=d.loans||S.loans; S.disps=d.disps||S.disps;
   /* เตรียมค่าที่ใช้บ่อยไว้ล่วงหน้า ลดการคำนวณซ้ำตอนวาดหน้าจอ */
@@ -1734,7 +1758,16 @@ function apply(d){
   $('#setBy').value=S.by;   $('#setPin').value=S.pin;
   $('#inspector').innerHTML=staffOptions(S.by);
   renderWard();
-  renderAll();
+  if(fastFirstPaint){
+    /* หน้าแรกวาดเฉพาะข้อมูลที่มองเห็นก่อน ส่วนหน้าที่ซ่อนค่อยวาดตอน browser ว่าง
+       ลดเวลาหลัง bootstrap โดยไม่เปลี่ยนข้อมูล ฟังก์ชัน หรือหน้าตา */
+    renderDash(); updateNotifDot();
+    const later=()=>{ renderStock(); renderCheck(); renderLoan(); renderFix(); renderDisp(); renderPlan(); };
+    if('requestIdleCallback' in window) requestIdleCallback(later,{timeout:1200});
+    else setTimeout(later,0);
+  }else{
+    renderAll();
+  }
   applyMine();
 }
 function fillSelect(sel,list,first){
@@ -1760,13 +1793,17 @@ $('#monthSel').onchange=async e=>{
   try{
     let ck=null;
     try{
-      ck=await jsonp({action:'checks',month:m});          /* เร็ว ส่งเฉพาะผลตรวจ */
-    }catch(e1){
-      /* เซิร์ฟเวอร์รุ่นเก่ายังไม่รู้จักคำสั่งนี้ ให้ถอยไปดึงข้อมูลทั้งก้อนแทน */
-      const full=await jsonp({action:'bootstrap',month:m});
-      apply(full); saveSnap(full);
-      S.ckCache[m]=S.checks;
-      return;
+      ck=await jsonp({action:'checksFb',month:m});        /* Firestore: ดึงเฉพาะผลตรวจของเดือน */
+    }catch(eFb){
+      try{
+        ck=await jsonp({action:'checks',month:m});        /* fallback: Google Sheets เดิม */
+      }catch(e1){
+        /* เซิร์ฟเวอร์รุ่นเก่ายังไม่รู้จักคำสั่งนี้ ให้ถอยไปดึงข้อมูลทั้งก้อนแทน */
+        const full=await jsonp({action:'bootstrap',month:m});
+        apply(full); saveSnap(full);
+        S.ckCache[m]=S.checks;
+        return;
+      }
     }
     S.checks=ck.checks||[]; S.ckCache[m]=S.checks;
     renderAll();
